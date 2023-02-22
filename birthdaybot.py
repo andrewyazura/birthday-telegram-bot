@@ -5,6 +5,7 @@ import calendar
 import pytz
 import configparser
 
+# lol
 from telegram.bot import Bot, BotCommand
 from telegram.ext.callbackcontext import CallbackContext
 from telegram.ext import Filters, Defaults
