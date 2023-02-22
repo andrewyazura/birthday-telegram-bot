@@ -29,7 +29,7 @@ logging.basicConfig(
 
 config = configparser.ConfigParser()
 config.read("birthdaybot_config.ini")
-CREATOR_ID = config["Bot"]["bot_token"]
+CREATOR_ID = config["Bot"]["creator_id"]
 BOT_TOKEN = config["Bot"]["bot_token"]
 
 
@@ -78,7 +78,7 @@ bot = Bot(BOT_TOKEN)
 bot.set_my_commands(commands)
 
 
-NAME, DATE, NOTE = range(3)
+ADD_NAME, ADD_DATE, ADD_NOTE, DEL_NAME, DESC_NAME = range(5)
 
 
 def help(update, context):
@@ -125,14 +125,14 @@ def reminder(context: CallbackContext):
 
 def add_birthday(update, context):
     update.message.reply_text("Print person's name:")
-    return NAME
+    return ADD_NAME
 
 
 def _add_name(update, context):
     name = update.message.text
     if len(name) > 255:
         update.message.reply_text("This name is too long. Choose another one:")
-        return NAME
+        return ADD_NAME
     elif (
         User.select(User.col_name)
         .where(
@@ -141,28 +141,35 @@ def _add_name(update, context):
         .first()
     ):
         update.message.reply_text("This name is already taken. Choose another one:")
-        return NAME
+        return ADD_NAME
     context.user_data["current_name"] = name
     update.message.reply_text(
         "Great! Print a date (format example: 22.02.2002 or 22.02):"
     )
-    return DATE
+    return ADD_DATE
 
 
 def _save_birthday(update, context):
     date = update.message.text
     try:
-        month, day = int(date[3:5]), int(date[:2])
-        datetime.date(datetime.date.today().year, month, day)
+        if not date[2] == ".":
+            raise ValueError
+        day, month = int(date[:2]), int(date[3:5])
+        if day == 29 and month == 2:
+            update.message.reply_text(
+                "This is an unusual date\nI will ask you to choose a different date like 01.03 or 28.02 and then add a note by using /add_note command that it is actually on 29.02\nSorry for the inconvenience"
+            )
         year = None
         if len(date) == 10:
+            if not date[5] == ".":
+                raise ValueError
             year = int(date[-4:])
             if datetime.date.today() < datetime.date(year, month, day):
-                update.message.reply_text("This is a future date. Choose another one:")
-                return DATE
-    except ValueError:
+                raise ValueError
+        datetime.date(datetime.date.today().year, month, day)
+    except Exception:
         update.message.reply_text("This is an invalid date. Choose another one:")
-        return DATE
+        return ADD_DATE
 
     User.create(
         col_name=context.user_data["current_name"],
@@ -180,11 +187,10 @@ def _save_birthday(update, context):
 def add_note(update, context):
     update.message.reply_text("About whom you want to add a note? (print a name)")
     list(update, context)
-    return NAME
+    return DESC_NAME
 
 
 def _find_name(update, context):
-
     name = update.message.text
     context.user_data["current_name"] = name
     update.message.reply_text(
@@ -193,7 +199,7 @@ def _find_name(update, context):
     (it could be a hint for a present or some notes for the future, etc.)
     """
     )
-    return NOTE
+    return ADD_NOTE
 
 
 def _save_note(update, context):
@@ -209,7 +215,7 @@ def _save_note(update, context):
 def delete_birthday(update, context):
     list(update, context)
     update.message.reply_text("Which one to delete? (print a name)")
-    return NAME
+    return DEL_NAME
 
 
 def _del_name(update, context):
@@ -229,7 +235,7 @@ def _del_name(update, context):
         ).execute()
     else:
         update.message.reply_text("No such person in your list. Try again:")
-        return NAME
+        return DEL_NAME
     update.message.reply_text("Successfully deleted!")
     help(update, context)
     return ConversationHandler.END
@@ -285,7 +291,7 @@ def list(update, context):
         update.message.reply_text(message)
 
 
-def stop(update):
+def stop(update, context):
     update.message.reply_text("stopped")
     return ConversationHandler.END
 
@@ -298,8 +304,8 @@ def start(update, context):
 add = ConversationHandler(
     entry_points=[CommandHandler("add_birthday", add_birthday)],
     states={
-        NAME: [MessageHandler(Filters.text & (~Filters.command), _add_name)],
-        DATE: [MessageHandler(Filters.text & (~Filters.command), _save_birthday)],
+        ADD_NAME: [MessageHandler(Filters.text & (~Filters.command), _add_name)],
+        ADD_DATE: [MessageHandler(Filters.text & (~Filters.command), _save_birthday)],
     },
     fallbacks=[CommandHandler("stop", stop)],
 )
@@ -307,7 +313,7 @@ add = ConversationHandler(
 delete = ConversationHandler(
     entry_points=[CommandHandler("delete_birthday", delete_birthday)],
     states={
-        NAME: [MessageHandler(Filters.text & (~Filters.command), _del_name)],
+        DEL_NAME: [MessageHandler(Filters.text & (~Filters.command), _del_name)],
     },
     fallbacks=[
         CommandHandler("stop", stop),
@@ -317,8 +323,8 @@ delete = ConversationHandler(
 describe = ConversationHandler(
     entry_points=[CommandHandler("add_note", add_note)],
     states={
-        NAME: [MessageHandler(Filters.text & (~Filters.command), _find_name)],
-        NOTE: [MessageHandler(Filters.text & (~Filters.command), _save_note)],
+        DESC_NAME: [MessageHandler(Filters.text & (~Filters.command), _find_name)],
+        ADD_NOTE: [MessageHandler(Filters.text & (~Filters.command), _save_note)],
     },
     fallbacks=[
         CommandHandler("stop", stop),
@@ -355,6 +361,7 @@ updater.dispatcher.add_error_handler(error_handler)
 updater.dispatcher.add_handler(CommandHandler("help", help))
 updater.dispatcher.add_handler(CommandHandler("list", list))
 updater.dispatcher.add_handler(CommandHandler("start", start))
+updater.dispatcher.add_handler(CommandHandler("stop", stop))
 updater.dispatcher.add_handler(add)
 updater.dispatcher.add_handler(delete)
 updater.dispatcher.add_handler(describe)
