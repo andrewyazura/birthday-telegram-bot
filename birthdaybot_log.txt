@@ -1,0 +1,202 @@
+ 2022-11-25 10:14:38,769 - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+ 2022-11-25 10:14:38,770 - INFO - Added job "reminder" to job store "default"
+ 2022-11-25 10:14:38,770 - INFO - Scheduler started
+ 2022-11-25 10:14:38,771 - DEBUG - Looking for jobs to run
+ 2022-11-25 10:14:38,771 - DEBUG - Next wakeup is due at 2022-11-26 10:00:00+02:00 (in 85521.228145 seconds)
+ 2022-11-25 10:14:38,773 - DEBUG - Entering: get_me
+ 2022-11-25 10:14:38,967 - DEBUG - {'supports_inline_queries': False, 'id': 5749842477, 'can_join_groups': True, 'can_read_all_group_messages': False, 'is_bot': True, 'username': 'oleh1bot', 'first_name': 'BirthdayBot'}
+ 2022-11-25 10:14:38,969 - DEBUG - Exiting: get_me
+ 2022-11-25 10:14:38,969 - DEBUG - Bot:5749842477:dispatcher - started
+ 2022-11-25 10:14:38,970 - DEBUG - Bot:5749842477:updater - started
+ 2022-11-25 10:14:38,970 - DEBUG - Updater thread started (polling)
+ 2022-11-25 10:14:38,970 - DEBUG - Start network loop retry bootstrap del webhook
+ 2022-11-25 10:14:38,970 - DEBUG - Deleting webhook
+ 2022-11-25 10:14:38,970 - DEBUG - Entering: delete_webhook
+ 2022-11-25 10:14:38,971 - DEBUG - Waiting for Dispatcher and polling to start
+ 2022-11-25 10:14:38,972 - DEBUG - Dispatcher started
+ 2022-11-25 10:14:39,019 - DEBUG - True
+ 2022-11-25 10:14:39,019 - DEBUG - Exiting: delete_webhook
+ 2022-11-25 10:14:39,019 - DEBUG - Bootstrap done
+ 2022-11-25 10:14:39,020 - DEBUG - Start network loop retry getting Updates
+ 2022-11-25 10:14:39,020 - DEBUG - Entering: get_updates
+ 2022-11-25 10:14:49,068 - DEBUG - No new updates found.
+ 2022-11-25 10:14:49,068 - DEBUG - []
+ 2022-11-25 10:14:49,068 - DEBUG - Exiting: get_updates
+ 2022-11-25 10:14:49,068 - DEBUG - Entering: get_updates
+ 2022-11-25 10:14:59,160 - DEBUG - No new updates found.
+ 2022-11-25 10:14:59,160 - DEBUG - []
+ 2022-11-25 10:14:59,160 - DEBUG - Exiting: get_updates
+ 2022-11-25 10:14:59,160 - DEBUG - Entering: get_updates
+ 2022-11-25 10:15:08,530 - DEBUG - Getting updates: [325566002]
+ 2022-11-25 10:15:08,530 - DEBUG - [<telegram.update.Update object at 0x0000018F6803C040>]
+ 2022-11-25 10:15:08,530 - DEBUG - Exiting: get_updates
+ 2022-11-25 10:15:08,531 - DEBUG - Entering: get_updates
+ 2022-11-25 10:15:08,531 - DEBUG - Processing Update: {'update_id': 325566002, 'message': {'chat': {'username': 'orehzzz', 'id': 651472384, 'first_name': 'Olegator', 'type': 'private'}, 'supergroup_chat_created': False, 'channel_chat_created': False, 'delete_chat_photo': False, 'new_chat_photo': [], 'message_id': 4305, 'date': 1669364108, 'photo': [], 'group_chat_created': False, 'caption_entities': [], 'text': '/list', 'new_chat_members': [], 'entities': [{'offset': 0, 'type': 'bot_command', 'length': 5}], 'from': {'id': 651472384, 'is_bot': False, 'username': 'orehzzz', 'language_code': 'en', 'first_name': 'Olegator'}}}
+ 2022-11-25 10:15:08,532 - DEBUG - ('SELECT "t1"."id", "t1"."col_name", "t1"."col_day", "t1"."col_month", "t1"."col_year", "t1"."col_note", "t1"."col_creator" FROM "user" AS "t1" WHERE ("t1"."col_creator" = %s) ORDER BY "t1"."col_month", "t1"."col_day"', ['651472384'])
+ 2022-11-25 10:15:08,678 - DEBUG - Entering: send_message
+ 2022-11-25 10:15:08,965 - DEBUG - {'chat': {'username': 'orehzzz', 'id': 651472384, 'first_name': 'Olegator', 'type': 'private'}, 'supergroup_chat_created': False, 'channel_chat_created': False, 'delete_chat_photo': False, 'new_chat_photo': [], 'message_id': 4306, 'date': 1669364109, 'photo': [], 'group_chat_created': False, 'caption_entities': [], 'text': 'Your list of birthdays:\n4 April, 3212  -----  geerg\n15 April, 2004  ------  Oleh\n4 June  ------  gg5r\n12 November, 2312  --------  fr\n23 November, 2004  -----  huhhh\n==============================\n25 November --- today\n==============================\n27 November, 2005  -----  Nazar\n12 December, 1212  -------  fre (lol kol)\n12 December, 1212  -----  erwgr', 'new_chat_members': [], 'entities': [], 'from': {'id': 5749842477, 'is_bot': True, 'username': 'oleh1bot', 'first_name': 'BirthdayBot'}}
+ 2022-11-25 10:15:08,966 - DEBUG - Exiting: send_message
+ 2022-11-25 10:15:12,110 - DEBUG - Getting updates: [325566003]
+ 2022-11-25 10:15:12,111 - DEBUG - [<telegram.update.Update object at 0x0000018F6803DB40>]
+ 2022-11-25 10:15:12,111 - DEBUG - Exiting: get_updates
+ 2022-11-25 10:15:12,111 - DEBUG - Entering: get_updates
+ 2022-11-25 10:15:12,112 - DEBUG - Processing Update: {'update_id': 325566003, 'message': {'chat': {'username': 'orehzzz', 'id': 651472384, 'first_name': 'Olegator', 'type': 'private'}, 'supergroup_chat_created': False, 'channel_chat_created': False, 'delete_chat_photo': False, 'new_chat_photo': [], 'message_id': 4307, 'date': 1669364112, 'photo': [], 'group_chat_created': False, 'caption_entities': [], 'text': '/help', 'new_chat_members': [], 'entities': [{'offset': 0, 'type': 'bot_command', 'length': 5}], 'from': {'id': 651472384, 'is_bot': False, 'username': 'orehzzz', 'language_code': 'en', 'first_name': 'Olegator'}}}
+ 2022-11-25 10:15:12,112 - DEBUG - Entering: send_message
+ 2022-11-25 10:15:12,204 - DEBUG - {'chat': {'username': 'orehzzz', 'id': 651472384, 'first_name': 'Olegator', 'type': 'private'}, 'supergroup_chat_created': False, 'channel_chat_created': False, 'delete_chat_photo': False, 'new_chat_photo': [], 'message_id': 4308, 'date': 1669364112, 'photo': [], 'group_chat_created': False, 'caption_entities': [], 'text': 'Commands to use:\n    /list\n    /add_birthday\n    /delete_birthday\n    /add_note\n\n    /help\n    /stop', 'new_chat_members': [], 'entities': [{'offset': 21, 'type': 'bot_command', 'length': 5}, {'offset': 31, 'type': 'bot_command', 'length': 13}, {'offset': 49, 'type': 'bot_command', 'length': 16}, {'offset': 70, 'type': 'bot_command', 'length': 9}, {'offset': 85, 'type': 'bot_command', 'length': 5}, {'offset': 95, 'type': 'bot_command', 'length': 5}], 'from': {'id': 5749842477, 'is_bot': True, 'username': 'oleh1bot', 'first_name': 'BirthdayBot'}}
+ 2022-11-25 10:15:12,205 - DEBUG - Exiting: send_message
+ 2022-11-25 10:15:22,166 - DEBUG - No new updates found.
+ 2022-11-25 10:15:22,166 - DEBUG - []
+ 2022-11-25 10:15:22,166 - DEBUG - Exiting: get_updates
+ 2022-11-25 10:15:22,166 - DEBUG - Entering: get_updates
+ 2022-11-25 10:15:32,211 - DEBUG - No new updates found.
+ 2022-11-25 10:15:32,211 - DEBUG - []
+ 2022-11-25 10:15:32,211 - DEBUG - Exiting: get_updates
+ 2022-11-25 10:15:32,211 - DEBUG - Entering: get_updates
+ 2022-11-25 10:15:42,273 - DEBUG - No new updates found.
+ 2022-11-25 10:15:42,273 - DEBUG - []
+ 2022-11-25 10:15:42,273 - DEBUG - Exiting: get_updates
+ 2022-11-25 10:15:42,273 - DEBUG - Entering: get_updates
+ 2022-11-25 10:15:52,321 - DEBUG - No new updates found.
+ 2022-11-25 10:15:52,321 - DEBUG - []
+ 2022-11-25 10:15:52,321 - DEBUG - Exiting: get_updates
+ 2022-11-25 10:15:52,322 - DEBUG - Entering: get_updates
+ 2022-11-25 10:16:02,372 - DEBUG - No new updates found.
+ 2022-11-25 10:16:02,373 - DEBUG - []
+ 2022-11-25 10:16:02,373 - DEBUG - Exiting: get_updates
+ 2022-11-25 10:16:02,373 - DEBUG - Entering: get_updates
+ 2022-11-25 10:16:12,432 - DEBUG - No new updates found.
+ 2022-11-25 10:16:12,432 - DEBUG - []
+ 2022-11-25 10:16:12,432 - DEBUG - Exiting: get_updates
+ 2022-11-25 10:16:12,432 - DEBUG - Entering: get_updates
+ 2022-11-25 10:16:22,488 - DEBUG - No new updates found.
+ 2022-11-25 10:16:22,488 - DEBUG - []
+ 2022-11-25 10:16:22,488 - DEBUG - Exiting: get_updates
+ 2022-11-25 10:16:22,489 - DEBUG - Entering: get_updates
+ 2022-11-25 10:16:32,592 - DEBUG - No new updates found.
+ 2022-11-25 10:16:32,592 - DEBUG - []
+ 2022-11-25 10:16:32,592 - DEBUG - Exiting: get_updates
+ 2022-11-25 10:16:32,592 - DEBUG - Entering: get_updates
+ 2022-11-25 10:16:42,646 - DEBUG - No new updates found.
+ 2022-11-25 10:16:42,646 - DEBUG - []
+ 2022-11-25 10:16:42,646 - DEBUG - Exiting: get_updates
+ 2022-11-25 10:16:42,646 - DEBUG - Entering: get_updates
+ 2022-11-25 10:16:52,696 - DEBUG - No new updates found.
+ 2022-11-25 10:16:52,696 - DEBUG - []
+ 2022-11-25 10:16:52,696 - DEBUG - Exiting: get_updates
+ 2022-11-25 10:16:52,696 - DEBUG - Entering: get_updates
+ 2022-11-25 10:17:02,756 - DEBUG - No new updates found.
+ 2022-11-25 10:17:02,756 - DEBUG - []
+ 2022-11-25 10:17:02,756 - DEBUG - Exiting: get_updates
+ 2022-11-25 10:17:02,757 - DEBUG - Entering: get_updates
+ 2022-11-25 10:17:12,832 - DEBUG - No new updates found.
+ 2022-11-25 10:17:12,832 - DEBUG - []
+ 2022-11-25 10:17:12,832 - DEBUG - Exiting: get_updates
+ 2022-11-25 10:17:12,832 - DEBUG - Entering: get_updates
+ 2022-11-25 10:17:22,882 - DEBUG - No new updates found.
+ 2022-11-25 10:17:22,882 - DEBUG - []
+ 2022-11-25 10:17:22,882 - DEBUG - Exiting: get_updates
+ 2022-11-25 10:17:22,882 - DEBUG - Entering: get_updates
+ 2022-11-25 10:17:32,939 - DEBUG - No new updates found.
+ 2022-11-25 10:17:32,939 - DEBUG - []
+ 2022-11-25 10:17:32,939 - DEBUG - Exiting: get_updates
+ 2022-11-25 10:17:32,940 - DEBUG - Entering: get_updates
+ 2022-11-25 10:17:42,985 - DEBUG - No new updates found.
+ 2022-11-25 10:17:42,985 - DEBUG - []
+ 2022-11-25 10:17:42,985 - DEBUG - Exiting: get_updates
+ 2022-11-25 10:17:42,985 - DEBUG - Entering: get_updates
+ 2022-11-25 10:17:53,033 - DEBUG - No new updates found.
+ 2022-11-25 10:17:53,033 - DEBUG - []
+ 2022-11-25 10:17:53,033 - DEBUG - Exiting: get_updates
+ 2022-11-25 10:17:53,033 - DEBUG - Entering: get_updates
+ 2022-11-25 10:18:03,083 - DEBUG - No new updates found.
+ 2022-11-25 10:18:03,083 - DEBUG - []
+ 2022-11-25 10:18:03,083 - DEBUG - Exiting: get_updates
+ 2022-11-25 10:18:03,083 - DEBUG - Entering: get_updates
+ 2022-11-25 10:18:13,134 - DEBUG - No new updates found.
+ 2022-11-25 10:18:13,134 - DEBUG - []
+ 2022-11-25 10:18:13,135 - DEBUG - Exiting: get_updates
+ 2022-11-25 10:18:13,135 - DEBUG - Entering: get_updates
+ 2022-11-25 10:18:23,182 - DEBUG - No new updates found.
+ 2022-11-25 10:18:23,182 - DEBUG - []
+ 2022-11-25 10:18:23,183 - DEBUG - Exiting: get_updates
+ 2022-11-25 10:18:23,183 - DEBUG - Entering: get_updates
+ 2022-11-25 10:18:33,235 - DEBUG - No new updates found.
+ 2022-11-25 10:18:33,235 - DEBUG - []
+ 2022-11-25 10:18:33,235 - DEBUG - Exiting: get_updates
+ 2022-11-25 10:18:33,235 - DEBUG - Entering: get_updates
+ 2022-11-25 10:18:43,290 - DEBUG - No new updates found.
+ 2022-11-25 10:18:43,290 - DEBUG - []
+ 2022-11-25 10:18:43,291 - DEBUG - Exiting: get_updates
+ 2022-11-25 10:18:43,291 - DEBUG - Entering: get_updates
+ 2022-11-25 10:18:53,336 - DEBUG - No new updates found.
+ 2022-11-25 10:18:53,336 - DEBUG - []
+ 2022-11-25 10:18:53,336 - DEBUG - Exiting: get_updates
+ 2022-11-25 10:18:53,336 - DEBUG - Entering: get_updates
+ 2022-11-25 10:19:03,393 - DEBUG - No new updates found.
+ 2022-11-25 10:19:03,393 - DEBUG - []
+ 2022-11-25 10:19:03,393 - DEBUG - Exiting: get_updates
+ 2022-11-25 10:19:03,393 - DEBUG - Entering: get_updates
+ 2022-11-25 10:19:13,455 - DEBUG - No new updates found.
+ 2022-11-25 10:19:13,455 - DEBUG - []
+ 2022-11-25 10:19:13,455 - DEBUG - Exiting: get_updates
+ 2022-11-25 10:19:13,455 - DEBUG - Entering: get_updates
+ 2022-11-25 10:19:23,504 - DEBUG - No new updates found.
+ 2022-11-25 10:19:23,504 - DEBUG - []
+ 2022-11-25 10:19:23,504 - DEBUG - Exiting: get_updates
+ 2022-11-25 10:19:23,505 - DEBUG - Entering: get_updates
+ 2022-11-25 10:19:33,554 - DEBUG - No new updates found.
+ 2022-11-25 10:19:33,554 - DEBUG - []
+ 2022-11-25 10:19:33,554 - DEBUG - Exiting: get_updates
+ 2022-11-25 10:19:33,554 - DEBUG - Entering: get_updates
+ 2022-11-25 10:19:54,011 - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+ 2022-11-25 10:19:54,011 - INFO - Added job "reminder" to job store "default"
+ 2022-11-25 10:19:54,011 - INFO - Scheduler started
+ 2022-11-25 10:19:54,013 - DEBUG - Looking for jobs to run
+ 2022-11-25 10:19:54,013 - DEBUG - Next wakeup is due at 2022-11-26 10:00:00+02:00 (in 85205.986129 seconds)
+ 2022-11-25 10:19:54,013 - DEBUG - Entering: get_me
+ 2022-11-25 10:19:54,225 - DEBUG - {'is_bot': True, 'can_read_all_group_messages': False, 'supports_inline_queries': False, 'first_name': 'BirthdayBot', 'id': 5749842477, 'can_join_groups': True, 'username': 'oleh1bot'}
+ 2022-11-25 10:19:54,225 - DEBUG - Exiting: get_me
+ 2022-11-25 10:19:54,227 - DEBUG - Bot:5749842477:dispatcher - started
+ 2022-11-25 10:19:54,227 - DEBUG - Bot:5749842477:updater - started
+ 2022-11-25 10:19:54,227 - DEBUG - Updater thread started (polling)
+ 2022-11-25 10:19:54,227 - DEBUG - Start network loop retry bootstrap del webhook
+ 2022-11-25 10:19:54,227 - DEBUG - Deleting webhook
+ 2022-11-25 10:19:54,228 - DEBUG - Entering: delete_webhook
+ 2022-11-25 10:19:54,228 - DEBUG - Waiting for Dispatcher and polling to start
+ 2022-11-25 10:19:54,230 - DEBUG - Dispatcher started
+ 2022-11-25 10:19:54,274 - DEBUG - True
+ 2022-11-25 10:19:54,274 - DEBUG - Exiting: delete_webhook
+ 2022-11-25 10:19:54,274 - DEBUG - Bootstrap done
+ 2022-11-25 10:19:54,274 - DEBUG - Start network loop retry getting Updates
+ 2022-11-25 10:19:54,274 - DEBUG - Entering: get_updates
+ 2022-11-25 10:20:04,338 - DEBUG - No new updates found.
+ 2022-11-25 10:20:04,338 - DEBUG - []
+ 2022-11-25 10:20:04,338 - DEBUG - Exiting: get_updates
+ 2022-11-25 10:20:04,338 - DEBUG - Entering: get_updates
+ 2022-11-25 10:20:14,376 - DEBUG - No new updates found.
+ 2022-11-25 10:20:14,376 - DEBUG - []
+ 2022-11-25 10:20:14,376 - DEBUG - Exiting: get_updates
+ 2022-11-25 10:20:14,376 - DEBUG - Entering: get_updates
+ 2022-11-25 10:20:24,428 - DEBUG - No new updates found.
+ 2022-11-25 10:20:24,428 - DEBUG - []
+ 2022-11-25 10:20:24,428 - DEBUG - Exiting: get_updates
+ 2022-11-25 10:20:24,443 - DEBUG - Entering: get_updates
+ 2022-11-25 10:20:34,497 - DEBUG - No new updates found.
+ 2022-11-25 10:20:34,497 - DEBUG - []
+ 2022-11-25 10:20:34,497 - DEBUG - Exiting: get_updates
+ 2022-11-25 10:20:34,498 - DEBUG - Entering: get_updates
+ 2022-11-25 10:20:44,548 - DEBUG - No new updates found.
+ 2022-11-25 10:20:44,548 - DEBUG - []
+ 2022-11-25 10:20:44,548 - DEBUG - Exiting: get_updates
+ 2022-11-25 10:20:44,548 - DEBUG - Entering: get_updates
+ 2022-11-25 10:20:54,605 - DEBUG - No new updates found.
+ 2022-11-25 10:20:54,605 - DEBUG - []
+ 2022-11-25 10:20:54,605 - DEBUG - Exiting: get_updates
+ 2022-11-25 10:20:54,605 - DEBUG - Entering: get_updates
+ 2022-11-25 10:21:04,657 - DEBUG - No new updates found.
+ 2022-11-25 10:21:04,657 - DEBUG - []
+ 2022-11-25 10:21:04,657 - DEBUG - Exiting: get_updates
+ 2022-11-25 10:21:04,658 - DEBUG - Entering: get_updates
+ 2022-11-25 10:21:09,896 - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+ 2022-11-25 10:21:09,897 - INFO - Added job "reminder" to job store "default"
+ 2022-11-25 10:21:09,897 - INFO - Scheduler started
