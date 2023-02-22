@@ -1,7 +1,7 @@
-telegram_birthdaybot/birthdaybot_config.ini
-telegram_birthdaybot/birthdaybot_create_config.py
-telegram_birthdaybot/birthdaybot_log.txt
-telegram_birthdaybot/birthdaybot_v1.py
-telegram_birthdaybot/birthdaybot_v2.py
-telegram_birthdaybot/test_2.py
-telegram_birthdaybot/test.py
+birthdaybot_config.ini
+birthdaybot_create_config.py
+birthdaybot_log.txt
+birthdaybot_v1.py
+birthdaybot_v2.py
+test_2.py
+test.py
