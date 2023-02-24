@@ -97,12 +97,12 @@ def help(update, context):
 
 
 def reminder(context: CallbackContext):
-    when_remind_list = {
+    when_remind_dict = {
         datetime.date.today() + datetime.timedelta(days=7): "in a week",
         datetime.date.today() + datetime.timedelta(days=1): "tomorrow",
         datetime.date.today(): "today!",
     }
-    for when_remind in when_remind_list:
+    for when_remind in when_remind_dict:
         for user in User.select().where(
             (User.col_day == when_remind.day) & (User.col_month == when_remind.month)
         ):
@@ -110,7 +110,7 @@ def reminder(context: CallbackContext):
             note = user.col_note
             day = str(user.col_day)
             month = str(user.col_month)
-            message = f"Hi there. It is {name}'s birthday {when_remind_list[when_remind]} - {day}.{month}!\n"
+            message = f"Hi there. It is {name}'s birthday {when_remind_dict[when_remind]} - {day}.{month}!\n"
             if user.col_year:
                 age = when_remind.year - user.col_year
                 message += f"He/She is turning {age}\n"
@@ -292,7 +292,6 @@ def list(update, context):
 
 
 def stop(update, context):
-    update.message.reply_text("stopped")
     return ConversationHandler.END
 
 
@@ -307,7 +306,9 @@ add = ConversationHandler(
         ADD_NAME: [MessageHandler(Filters.text & (~Filters.command), _add_name)],
         ADD_DATE: [MessageHandler(Filters.text & (~Filters.command), _save_birthday)],
     },
-    fallbacks=[CommandHandler("stop", stop)],
+    fallbacks=[
+        MessageHandler(Filters.command, stop),
+    ],
 )
 
 delete = ConversationHandler(
@@ -316,7 +317,7 @@ delete = ConversationHandler(
         DEL_NAME: [MessageHandler(Filters.text & (~Filters.command), _del_name)],
     },
     fallbacks=[
-        CommandHandler("stop", stop),
+        MessageHandler(Filters.command, stop),
     ],
 )
 
@@ -327,7 +328,7 @@ describe = ConversationHandler(
         ADD_NOTE: [MessageHandler(Filters.text & (~Filters.command), _save_note)],
     },
     fallbacks=[
-        CommandHandler("stop", stop),
+        MessageHandler(Filters.command, stop),
     ],
 )
 
@@ -358,13 +359,14 @@ def error_handler(update, context):
 
 
 updater.dispatcher.add_error_handler(error_handler)
-updater.dispatcher.add_handler(CommandHandler("help", help))
-updater.dispatcher.add_handler(CommandHandler("list", list))
-updater.dispatcher.add_handler(CommandHandler("start", start))
-updater.dispatcher.add_handler(CommandHandler("stop", stop))
-updater.dispatcher.add_handler(add)
-updater.dispatcher.add_handler(delete)
-updater.dispatcher.add_handler(describe)
+updater.dispatcher.add_handler(CommandHandler("help", help), 0)
+updater.dispatcher.add_handler(CommandHandler("list", list), 0)
+updater.dispatcher.add_handler(CommandHandler("start", start, 0))
+updater.dispatcher.add_handler(CommandHandler("stop", stop), 0)
+updater.dispatcher.add_handler(add, 1)
+updater.dispatcher.add_handler(delete, 2)
+updater.dispatcher.add_handler(describe, 3)
+
 
 updater.job_queue.run_daily(reminder, time=datetime.time(hour=10, minute=0, second=0))
 
