@@ -85,7 +85,7 @@ def help(update, context):
     update.message.reply_text(
         """
         Commands to use:
-    /list
+    /list - 
     /add_birthday
     /delete_birthday
     /add_note
@@ -108,16 +108,14 @@ def reminder(context: CallbackContext):
         ):
             name = user.col_name
             note = user.col_note
-            day = str(user.col_day)
-            month = str(user.col_month)
-            message = f"Hi there. It is {name}'s birthday {when_remind_dict[when_remind]} - {day}.{month}!\n"
+            message = (
+                f"Hi there. It is {name}'s birthday {when_remind_dict[when_remind]}\n"
+            )
             if user.col_year:
                 age = when_remind.year - user.col_year
                 message += f"He/She is turning {age}\n"
             if note:
-                message += (
-                    f" (Here is a note you left previously about {name}: {note})\n"
-                )
+                message += f"(your note: {note})\n"
             message += f"I hope you didn't forget? :)"
 
             context.bot.send_message(chat_id=user.col_creator, text=message)
