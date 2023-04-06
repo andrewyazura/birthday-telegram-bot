@@ -7,6 +7,7 @@ conf["Help"] = {
     "add_birthday": "додати день народження до списку",
     "delete_birthday": "видалити день народження зі списку",
     "add_note": "додати замітку про когось",
+    "language": "обрати мову",
     "help": "довідка",
     "stop": "зупинити",
 }
@@ -15,7 +16,7 @@ conf["Reminder"] = {
     "week": "Через тиждень",
     "tomorrow": "Завтра",
     "today": "Сьогодні",
-    "message_start": "Здоровенькі були! {when} день народження у {name}",
+    "message_start": "Здоровенькі були. {when} день народження у {name}!",
     "message_age": "Йому/Їй виповнюється {age}!",
     "message_note": "(твоя примітка: {note})",
     "message_end": "Сподіваюсь твій подарунок вже готовий? :)",
@@ -57,7 +58,6 @@ conf["Misc"] = {
 }
 
 conf["Language"] = {
-    "language": "ukr",
     "choose": "Виберіть мову",
     "changed": "Бот вивчив українську",
 }
@@ -77,5 +77,5 @@ conf["Month"] = {
     "12": "Грудня",
 }
 
-with open("conf_ukr.ini", "w") as configfile:
+with open("conf_ua.ini", "w") as configfile:
     conf.write(configfile)
