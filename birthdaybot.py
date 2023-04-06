@@ -1,17 +1,17 @@
 import logging
 import datetime
 import traceback
-import calendar
 import pytz
 import configparser
 
 from telegram.bot import Bot, BotCommand
-from telegram.ext.callbackcontext import CallbackContext
 from telegram.ext import Filters, Defaults
 from telegram.ext.commandhandler import CommandHandler
 from telegram.ext.conversationhandler import ConversationHandler
 from telegram.ext.messagehandler import MessageHandler
+from telegram.ext.callbackqueryhandler import CallbackQueryHandler
 from telegram.ext.updater import Updater
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 
 from peewee import (
     Model,
@@ -19,6 +19,7 @@ from peewee import (
     TextField,
     SmallIntegerField,
     CharField,
+    ForeignKeyField,
 )
 
 logging.basicConfig(
@@ -31,6 +32,9 @@ config = configparser.ConfigParser()
 config.read("birthdaybot_config.ini")
 CREATOR_ID = config["Bot"]["creator_id"]
 BOT_TOKEN = config["Bot"]["bot_token"]
+
+text_config = configparser.ConfigParser()
+text_config.read(r"conf_en.ini")
 
 
 psql_db = PostgresqlDatabase(
@@ -46,16 +50,22 @@ class BaseModel(Model):
 
 
 class User(BaseModel):
+    col_creator = CharField()
+    col_language = CharField(default="en")
+
+
+class Birthdays(BaseModel):
     col_name = CharField()
     col_day = SmallIntegerField()
     col_month = SmallIntegerField()
     col_year = SmallIntegerField(null=True)
     col_note = TextField(null=True)
-    col_creator = CharField()
+    col_creator = ForeignKeyField(User, backref="birthdays")
 
 
 with psql_db:
-    psql_db.create_tables([User])
+    psql_db.create_tables([Birthdays, User])
+
 
 defaults = Defaults(tzinfo=pytz.timezone("Europe/Kyiv"))
 
@@ -71,79 +81,116 @@ commands = [
     BotCommand("add_birthday", "adds a birthday to your list"),
     BotCommand("delete_birthday", "deletes a birthday from your list"),
     BotCommand("add_note", "add some info about someone"),
-    BotCommand("help", "list of commands"),
+    BotCommand("help", "general info"),
+    BotCommand("language", "change Bot's language"),
     BotCommand("stop", "to stop"),
 ]
 bot = Bot(BOT_TOKEN)
 bot.set_my_commands(commands)
 
 
-ADD_NAME, ADD_DATE, ADD_NOTE, DEL_NAME, DESC_NAME = range(5)
+ADD_NAME, ADD_DATE, ADD_NOTE, DEL_NAME, DESC_NAME, CHANGE_LANG = range(6)
 
 
 def help(update, context):
-    update.message.reply_text(
-        """
-        Commands to use:
-    /list - 
-    /add_birthday
-    /delete_birthday
-    /add_note
+    update.effective_message.reply_text(
+        f"""
+    {text(update, "Help", "head")}:
+    /list - {text(update, "Help", "list")}
+    /add_birthday - {text(update, "Help", "add_birthday")} 
+    /delete_birthday - {text(update, "Help", "delete_birthday")}
+    /add_note - {text(update, "Help", "add_note")}
+    /langauge - {text(update, "Help", "language")}
 
-    /help
-    /stop
+    /help - {text(update, "Help", "help")}
+    /stop - {text(update, "Help", "stop")}
     """
     )
 
 
-def reminder(context: CallbackContext):
+def reminder(context):
+    update = None
     when_remind_dict = {
-        datetime.date.today() + datetime.timedelta(days=7): "in a week",
+        datetime.date.today() + datetime.timedelta(days=7): "week",
         datetime.date.today() + datetime.timedelta(days=1): "tomorrow",
-        datetime.date.today(): "today!",
+        datetime.date.today(): "today",
     }
     for when_remind in when_remind_dict:
-        for user in User.select().where(
-            (User.col_day == when_remind.day) & (User.col_month == when_remind.month)
+        for birthday in Birthdays.select().where(
+            (Birthdays.col_day == when_remind.day)
+            & (Birthdays.col_month == when_remind.month)
         ):
-            name = user.col_name
-            note = user.col_note
-            message = (
-                f"Hi there. It is {name}'s birthday {when_remind_dict[when_remind]}\n"
+            lang = User.get(User.id == birthday.col_creator).col_language
+            name = birthday.col_name
+            note = birthday.col_note
+            message = text(update, "Reminder", "message_start", lang=lang).format(
+                name=name,
+                when=text(update, "Reminder", when_remind_dict[when_remind], lang=lang),
             )
-            if user.col_year:
-                age = when_remind.year - user.col_year
-                message += f"He/She is turning {age}\n"
+            if birthday.col_year:
+                age = when_remind.year - birthday.col_year
+                message += text(update, "Reminder", "message_age", lang=lang).format(
+                    age=age
+                )
             if note:
-                message += f"(your note: {note})\n"
-            message += f"I hope you didn't forget? :)"
+                message += "\n" + text(
+                    update, "Reminder", "message_note", lang=lang
+                ).format(note=note)
+            message += "\n" + text(update, "Reminder", "message_end", lang=lang)
+            context.bot.send_message(
+                chat_id=User.get(User.id == birthday.col_creator).col_creator,
+                text=message,
+            )
 
-            context.bot.send_message(chat_id=user.col_creator, text=message)
+
+def text(update, section, key, lang=None):
+    if not lang:
+        lang = User.get(User.col_creator == update.effective_user.id).col_language
+    text_config.read(f"conf_{lang}.ini")
+    return text_config[section][key]
+
+
+def language(update, context):
+    keyboard = [
+        [
+            InlineKeyboardButton("English", callback_data="en"),
+            InlineKeyboardButton("Українська", callback_data="ua"),
+        ],
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    update.message.reply_text(
+        text(update, "Language", "choose"), reply_markup=reply_markup
+    )
+    return CHANGE_LANG
+
+
+def _change_language(update, context):
+    answer = update.callback_query.data
+    User.update(col_language=answer).where(
+        User.col_creator == update.effective_user.id
+    ).execute()
+    text_config.read(f"conf_{answer}.ini")
+    update.callback_query.edit_message_text(text=text(update, "Language", "changed"))
+    help(update, context)
+    return ConversationHandler.END
 
 
 def add_birthday(update, context):
-    update.message.reply_text("Print person's name:")
+    update.message.reply_text(text(update, "AddBirthday", "print_name"))
     return ADD_NAME
 
 
 def _add_name(update, context):
     name = update.message.text
+    user = User.select().where(User.col_creator == update.effective_user.id).first()
     if len(name) > 255:
-        update.message.reply_text("This name is too long. Choose another one:")
+        update.message.reply_text(text(update, "AddBirthday", "too_long"))
         return ADD_NAME
-    elif (
-        User.select(User.col_name)
-        .where(
-            (User.col_creator == update.effective_user.id) and (User.col_name == name)
-        )
-        .first()
-    ):
-        update.message.reply_text("This name is already taken. Choose another one:")
+    if user.birthdays.select().where(Birthdays.col_name == name).first():
+        update.message.reply_text(text(update, "AddBirthday", "already_taken"))
         return ADD_NAME
     context.user_data["current_name"] = name
-    update.message.reply_text(
-        "Great! Print a date (format example: 22.02.2002 or 22.02):"
-    )
+    update.message.reply_text(text(update, "AddBirthday", "print_date"))
     return ADD_DATE
 
 
@@ -155,8 +202,9 @@ def _save_birthday(update, context):
         day, month = int(date[:2]), int(date[3:5])
         if day == 29 and month == 2:
             update.message.reply_text(
-                "This is an unusual date\nI will ask you to choose a different date like 01.03 or 28.02 and then add a note by using /add_note command that it is actually on 29.02\nSorry for the inconvenience"
+                text(update, "AddBirthday", "29th").format(newline1="\n", newline2="\n")
             )
+            return ADD_DATE
         year = None
         if len(date) == 10:
             if not date[5] == ".":
@@ -166,112 +214,112 @@ def _save_birthday(update, context):
                 raise ValueError
         datetime.date(datetime.date.today().year, month, day)
     except Exception:
-        update.message.reply_text("This is an invalid date. Choose another one:")
+        update.message.reply_text(text(update, "AddBirthday", "invalid_date"))
         return ADD_DATE
-
-    User.create(
+    Birthdays.create(
         col_name=context.user_data["current_name"],
         col_day=day,
         col_month=month,
         col_year=year,
-        col_creator=update.effective_user.id,
+        col_creator=User.get(User.col_creator == update.effective_user.id),
     )
-
-    update.message.reply_text("Successfully added!")
+    update.message.reply_text(text(update, "AddBirthday", "added"))
     help(update, context)
     return ConversationHandler.END
 
 
 def add_note(update, context):
-    update.message.reply_text("About whom you want to add a note? (print a name)")
+    update.message.reply_text(text(update, "AddNote", "print_name"))
     list(update, context)
     return DESC_NAME
 
 
 def _find_name(update, context):
     name = update.message.text
+    user = User.select().where(User.col_creator == update.effective_user.id).first()
+    if not user.birthdays.select().where(Birthdays.col_name == name):
+        update.message.reply_text(text(update, "AddNote", "invalid_name"))
+        return DESC_NAME
     context.user_data["current_name"] = name
     update.message.reply_text(
-        """
-    Print a description:
-    (it could be a hint for a present or some notes for the future, etc.)
-    """
+        text(update, "AddNote", "print_desc").format(newline="\n")
     )
     return ADD_NOTE
 
 
 def _save_note(update, context):
     note = update.message.text
-    User.update(col_note=note).where(
-        User.col_name == context.user_data["current_name"]
+    user = User.select().where(User.col_creator == update.effective_user.id).first()
+    Birthdays.update(col_note=note).where(
+        (Birthdays.col_name == context.user_data["current_name"])
+        & (Birthdays.col_creator == user.id)
     ).execute()
-    update.message.reply_text("Successfully added!")
+    update.message.reply_text(text(update, "AddNote", "added"))
     help(update, context)
     return ConversationHandler.END
 
 
 def delete_birthday(update, context):
     list(update, context)
-    update.message.reply_text("Which one to delete? (print a name)")
+    update.message.reply_text(text(update, "DeleteBirthday", "print_name"))
     return DEL_NAME
 
 
 def _del_name(update, context):
     del_name = update.message.text
-
-    if (
-        User.select()
-        .where(
-            (User.col_creator == update.effective_user.id)
-            and (User.col_name == del_name)
-        )
-        .first()
-    ):
-        User.delete().where(
-            (User.col_creator == update.effective_user.id)
-            and (User.col_name == del_name)
-        ).execute()
-    else:
-        update.message.reply_text("No such person in your list. Try again:")
+    user = User.select().where(User.col_creator == update.effective_user.id).first()
+    query = Birthdays.delete().where(
+        (Birthdays.col_creator == user) & (Birthdays.col_name == del_name)
+    )
+    if not query.execute():
+        update.message.reply_text(text(update, "DeleteBirthday", "invalid_name"))
         return DEL_NAME
-    update.message.reply_text("Successfully deleted!")
+    update.message.reply_text(text(update, "DeleteBirthday", "deleted"))
     help(update, context)
     return ConversationHandler.END
 
 
 def list(update, context):
-    message = "Your list of birthdays:\n"
+    message = text(update, "List", "head") + "\n"
     border = "=" * 30
     today = datetime.date.today()
     today_added = 0
-    for user in (
+
+    user = (
         User.select()
-        .where(User.col_creator == str(update.effective_user.id))
-        .order_by(User.col_month, User.col_day)
-    ):
-        name, note = user.col_name, user.col_note
+        .where(User.col_creator == update.effective_user.id)
+        .first()
+        .birthdays
+    )
+
+    for birthday in user.select().order_by(Birthdays.col_month, Birthdays.col_day):
+        name, note = birthday.col_name, birthday.col_note
         day, month, year = (
-            str(user.col_day),
-            calendar.month_name[user.col_month],
-            str(user.col_year),
+            str(birthday.col_day),
+            text(update, "Month", str(birthday.col_month)),
+            str(birthday.col_year),
         )
-        if datetime.date(today.year, user.col_month, int(day)) == today:
-            message += (
-                f"{border}\n{day} {month} --- today is {name}'s birthday!\n{border}\n"
-            )
+
+        if datetime.date(today.year, birthday.col_month, int(day)) == today:
+            today_birthday = text(update, "List", "today_birthday").format(name=name)
+            message += f"{border}\n{day} {month} --- {today_birthday}\n{border}\n"
             today_added = 1
             continue
         elif (
-            datetime.date(today.year, user.col_month, int(day)) > today
+            datetime.date(today.year, birthday.col_month, int(day)) > today
             and not today_added
         ):
-            message += f"{border}\n{today.day} {calendar.month_name[today.month]} --- today\n{border}\n"
+            word_today = text(update, "List", "today")
+            today_month = text(update, "Month", str(today.month))
+            message += (
+                f"{border}\n{today.day} {today_month} --- {word_today}\n{border}\n"
+            )
             today_added = 1
         space = "-"
         if len(name) < 9:
             space = "-" * (10 - len(name))
         message += f"{day} {month}"
-        if user.col_year:
+        if birthday.col_year:
             message += f", {year}"
         message += f"  {space}  {name}"
         if note:
@@ -279,13 +327,15 @@ def list(update, context):
         else:
             message += f"\n"
 
-    if message == "Your list of birthdays:\n":
-        update.message.reply_text(
-            "Your list is empty for now\nAdd some birthdays to your list with /add_birthday command"
-        )
+    if message == text(update, "List", "head"):
+        update.message.reply_text(text(update, "List", "empty").format(newline="\n"))
     else:
         if today_added == 0:
-            message += f"{border}\n{today.day} {calendar.month_name[today.month]} --- today\n{border}\n"
+            today_month = text(update, "Month", str(today.month))
+            word_today = text(update, "List", "today")
+            message += (
+                f"{border}\n{today.day} {today_month} --- {word_today}\n{border}\n"
+            )
         update.message.reply_text(message)
 
 
@@ -294,7 +344,9 @@ def stop(update, context):
 
 
 def start(update, context):
-    update.message.reply_text("Hi")
+    if not User.select().where(User.col_creator == update.effective_user.id):
+        User.create(col_creator=update.effective_user.id)
+    update.message.reply_text(text(update, "Misc", "start"))
     help(update, context)
 
 
@@ -350,10 +402,7 @@ def error_handler(update, context):
     )
 
     context.bot.send_message(chat_id=CREATOR_ID, text=message, parse_mode="HTML")
-
-    update.effective_user.send_message(
-        "Something went wrong. Report was sent to the creator of this bot"
-    )
+    update.effective_user.send_message(text(update, "Misc", "error"))
 
 
 updater.dispatcher.add_error_handler(error_handler)
@@ -361,13 +410,16 @@ updater.dispatcher.add_handler(CommandHandler("help", help), 0)
 updater.dispatcher.add_handler(CommandHandler("list", list), 0)
 updater.dispatcher.add_handler(CommandHandler("start", start, 0))
 updater.dispatcher.add_handler(CommandHandler("stop", stop), 0)
-updater.dispatcher.add_handler(add, 1)
-updater.dispatcher.add_handler(delete, 2)
-updater.dispatcher.add_handler(describe, 3)
+updater.dispatcher.add_handler(CommandHandler("language", language), 1)
+updater.dispatcher.add_handler(
+    CallbackQueryHandler(_change_language, pattern="ua|en"),
+    0,
+)
+updater.dispatcher.add_handler(add, 2)
+updater.dispatcher.add_handler(delete, 3)
+updater.dispatcher.add_handler(describe, 4)
 
-
-updater.job_queue.run_daily(reminder, time=datetime.time(hour=10, minute=0, second=0))
-
+updater.job_queue.run_daily(reminder, time=datetime.time(hour=9, minute=0, second=0))
 
 updater.start_polling()
 updater.idle()
