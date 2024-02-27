@@ -13,14 +13,14 @@ from telegram.ext.callbackqueryhandler import CallbackQueryHandler
 from telegram.ext.updater import Updater
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 
-from peewee import (
-    Model,
-    PostgresqlDatabase,
-    TextField,
-    SmallIntegerField,
-    CharField,
-    ForeignKeyField,
-)
+# from peewee import (
+#     Model,
+#     PostgresqlDatabase,
+#     TextField,
+#     SmallIntegerField,
+#     CharField,
+#     ForeignKeyField,
+# )
 
 logging.basicConfig(
     filename="birthdaybot_log.txt",
@@ -33,38 +33,38 @@ config.read("birthdaybot_config.ini")
 CREATOR_ID = config["Bot"]["creator_id"]
 BOT_TOKEN = config["Bot"]["bot_token"]
 
-text_config = configparser.ConfigParser()
-text_config.read(r"conf_en.ini")
+# text_config = configparser.ConfigParser()
+# text_config.read(r"conf_en.ini")
 
 
-psql_db = PostgresqlDatabase(
-    config["Database"]["name"],
-    user=config["Database"]["user"],
-    password=config["Database"]["password"],
-)
+# psql_db = PostgresqlDatabase(
+#     config["Database"]["name"],
+#     user=config["Database"]["user"],
+#     password=config["Database"]["password"],
+# )
 
 
-class BaseModel(Model):
-    class Meta:
-        database = psql_db
+# class BaseModel(Model):
+#     class Meta:
+#         database = psql_db
 
 
-class User(BaseModel):
-    col_creator = CharField()
-    col_language = CharField(default="en")
+# class User(BaseModel):
+#     col_creator = CharField()
+#     col_language = CharField(default="en")
 
 
-class Birthdays(BaseModel):
-    col_name = CharField()
-    col_day = SmallIntegerField()
-    col_month = SmallIntegerField()
-    col_year = SmallIntegerField(null=True)
-    col_note = TextField(null=True)
-    col_creator = ForeignKeyField(User, backref="birthdays")
+# class Birthdays(BaseModel):
+#     col_name = CharField()
+#     col_day = SmallIntegerField()
+#     col_month = SmallIntegerField()
+#     col_year = SmallIntegerField(null=True)
+#     col_note = TextField(null=True)
+#     col_creator = ForeignKeyField(User, backref="birthdays")
 
 
-with psql_db:
-    psql_db.create_tables([Birthdays, User])
+# with psql_db:
+#     psql_db.create_tables([Birthdays, User])
 
 
 defaults = Defaults(tzinfo=pytz.timezone("Europe/Kyiv"))
@@ -143,39 +143,39 @@ def reminder(context):
             )
 
 
-def text(update, section, key, lang=None):
-    if not lang:
-        lang = User.get(User.col_creator == update.effective_user.id).col_language
-    text_config.read(f"conf_{lang}.ini")
-    return text_config[section][key]
+# def text(update, section, key, lang=None):
+#     if not lang:
+#         lang = User.get(User.col_creator == update.effective_user.id).col_language
+#     text_config.read(f"conf_{lang}.ini")
+#     return text_config[section][key]
 
 
-def language(update, context):
-    keyboard = [
-        [
-            InlineKeyboardButton("English", callback_data="en"),
-            InlineKeyboardButton("Українська", callback_data="ua"),
-        ],
-    ]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-    update.message.reply_text(
-        text(update, "Language", "choose"), reply_markup=reply_markup
-    )
-    return CHANGE_LANG
+# def language(update, context):
+#     keyboard = [
+#         [
+#             InlineKeyboardButton("English", callback_data="en"),
+#             InlineKeyboardButton("Українська", callback_data="ua"),
+#         ],
+#     ]
+#     reply_markup = InlineKeyboardMarkup(keyboard)
+#     update.message.reply_text(
+#         text(update, "Language", "choose"), reply_markup=reply_markup
+#     )
+#     return CHANGE_LANG
 
 
-def _change_language(update, context):
-    answer = update.callback_query.data
-    User.update(col_language=answer).where(
-        User.col_creator == update.effective_user.id
-    ).execute()
-    text_config.read(f"conf_{answer}.ini")
-    update.callback_query.edit_message_text(text=text(update, "Language", "changed"))
-    help(update, context)
-    return ConversationHandler.END
+# def _change_language(update, context):
+#     answer = update.callback_query.data
+#     User.update(col_language=answer).where(
+#         User.col_creator == update.effective_user.id
+#     ).execute()
+#     text_config.read(f"conf_{answer}.ini")
+#     update.callback_query.edit_message_text(text=text(update, "Language", "changed"))
+#     help(update, context)
+#     return ConversationHandler.END
 
 
-def add_birthday(update, context):
+def add_birthday(update, context): #change function names to add_1, add_2 or similar
     update.message.reply_text(text(update, "AddBirthday", "print_name"))
     return ADD_NAME
 
