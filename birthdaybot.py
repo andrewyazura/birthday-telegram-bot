@@ -5,25 +5,27 @@ import pytz
 import configparser
 
 from telegram import Bot, BotCommand
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import (
     Application,
     CommandHandler,
     ConversationHandler,
     MessageHandler,
     CallbackQueryHandler,
+    ContextTypes,
+    JobQueue,
 )
 from telegram.ext import filters, Defaults
 
 
-from peewee import (
-    Model,
-    PostgresqlDatabase,
-    TextField,
-    SmallIntegerField,
-    CharField,
-    ForeignKeyField,
-)
+# from peewee import (
+#     Model,
+#     PostgresqlDatabase,
+#     TextField,
+#     SmallIntegerField,
+#     CharField,
+#     ForeignKeyField,
+# )
 
 logging.basicConfig(
     filename="birthdaybot_log.txt",
@@ -32,7 +34,7 @@ logging.basicConfig(
 )
 
 config = configparser.ConfigParser()
-config.read("birthdaybot_config.ini")
+config.read("config.ini")
 CREATOR_ID = config["Bot"]["creator_id"]
 BOT_TOKEN = config["Bot"]["bot_token"]
 
@@ -40,34 +42,34 @@ text_config = configparser.ConfigParser()
 text_config.read(r"conf_en.ini")
 
 
-psql_db = PostgresqlDatabase(
-    config["Database"]["name"],
-    user=config["Database"]["user"],
-    password=config["Database"]["password"],
-)
+# psql_db = PostgresqlDatabase(
+#     config["Database"]["name"],
+#     user=config["Database"]["user"],
+#     password=config["Database"]["password"],
+# )
 
 
-class BaseModel(Model):
-    class Meta:
-        database = psql_db
+# class BaseModel(Model):
+#     class Meta:
+#         database = psql_db
 
 
-class User(BaseModel):
-    col_creator = CharField()
-    col_language = CharField(default="en")
+# class User(BaseModel):
+#     col_creator = CharField()
+#     col_language = CharField(default="en")
 
 
-class Birthdays(BaseModel):
-    col_name = CharField()
-    col_day = SmallIntegerField()
-    col_month = SmallIntegerField()
-    col_year = SmallIntegerField(null=True)
-    col_note = TextField(null=True)
-    col_creator = ForeignKeyField(User, backref="birthdays")
+# class Birthdays(BaseModel):
+#     col_name = CharField()
+#     col_day = SmallIntegerField()
+#     col_month = SmallIntegerField()
+#     col_year = SmallIntegerField(null=True)
+#     col_note = TextField(null=True)
+#     col_creator = ForeignKeyField(User, backref="birthdays")
 
 
-with psql_db:
-    psql_db.create_tables([Birthdays, User])
+# with psql_db:
+#     psql_db.create_tables([Birthdays, User])
 
 
 defaults = Defaults(tzinfo=pytz.timezone("Europe/Kyiv"))
@@ -76,25 +78,25 @@ defaults = Defaults(tzinfo=pytz.timezone("Europe/Kyiv"))
 #     BOT_TOKEN,
 #     defaults=defaults,
 # )
-application = Application.builder().token("BOT_TOKEN").build()
+application = Application.builder().token(BOT_TOKEN).build()
 
-commands = [
-    BotCommand("list", "your added birthdays"),
-    BotCommand("add_birthday", "adds a birthday to your list"),
-    BotCommand("delete_birthday", "deletes a birthday from your list"),
-    BotCommand("add_note", "add some info about someone"),
-    BotCommand("help", "general info"),
-    BotCommand("language", "change Bot's language"),
-    BotCommand("stop", "to stop"),
-]
-bot = Bot(BOT_TOKEN)
-bot.set_my_commands(commands)
+# commands = [
+#     BotCommand("list", "your added birthdays"),
+#     BotCommand("add_birthday", "adds a birthday to your list"),
+#     BotCommand("delete_birthday", "deletes a birthday from your list"),
+#     BotCommand("add_note", "add some info about someone"),
+#     BotCommand("help", "general info"),
+#     BotCommand("language", "change Bot's language"),
+#     BotCommand("stop", "to stop"),
+# ]
+# bot = Bot(BOT_TOKEN)
+# bot.set_my_commands(commands)
 
 
 ADD_NAME, ADD_DATE, ADD_NOTE, DEL_NAME, DESC_NAME, CHANGE_LANG = range(6)
 
 
-async def help(update, context):
+async def help(update, context: ContextTypes.DEFAULT_TYPE):
     await update.effective_message.reply_text(
         f"""
     {text(update, "Help", "head")}:
@@ -110,7 +112,9 @@ async def help(update, context):
     )
 
 
-async def reminder(context):#ContextTypes.DEFAULT_TYPE
+async def reminder(context: ContextTypes.DEFAULT_TYPE):  # ContextTypes.DEFAULT_TYPE
+    print("lol")
+    await context.bot.send_message(chat_id=CREATOR_ID, text="One message every minute")
     update = None
     when_remind_dict = {
         datetime.date.today() + datetime.timedelta(days=7): "week",
@@ -146,13 +150,12 @@ async def reminder(context):#ContextTypes.DEFAULT_TYPE
 
 
 def text(update, section, key, lang=None):
-    if not lang:
-        lang = User.get(User.col_creator == update.effective_user.id).col_language
+    lang = "en"
     text_config.read(f"conf_{lang}.ini")
     return text_config[section][key]
 
 
-async def language(update, context):
+async def language(update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [
         [
             InlineKeyboardButton("English", callback_data="en"),
@@ -166,7 +169,7 @@ async def language(update, context):
     return CHANGE_LANG
 
 
-async def _change_language(update, context):
+async def _change_language(update, context: ContextTypes.DEFAULT_TYPE):
     answer = update.callback_query.data
     User.update(col_language=answer).where(
         User.col_creator == update.effective_user.id
@@ -180,13 +183,13 @@ async def _change_language(update, context):
 
 
 async def add_birthday(
-    update, context
+    update, context: ContextTypes.DEFAULT_TYPE
 ):  # change function names to add_1, add_2 or similar
     await update.message.reply_text(text(update, "AddBirthday", "print_name"))
     return ADD_NAME
 
 
-async def _add_name(update, context):
+async def _add_name(update, context: ContextTypes.DEFAULT_TYPE):
     name = update.message.text
     user = User.select().where(User.col_creator == update.effective_user.id).first()
     if len(name) > 255:
@@ -200,7 +203,7 @@ async def _add_name(update, context):
     return ADD_DATE
 
 
-async def _save_birthday(update, context):
+async def _save_birthday(update, context: ContextTypes.DEFAULT_TYPE):
     date = update.message.text
     try:
         if not date[2] == ".":
@@ -234,13 +237,13 @@ async def _save_birthday(update, context):
     return ConversationHandler.END
 
 
-async def add_note(update, context):
+async def add_note(update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(text(update, "AddNote", "print_name"))
     list(update, context)
     return DESC_NAME
 
 
-async def _find_name(update, context):
+async def _find_name(update, context: ContextTypes.DEFAULT_TYPE):
     name = update.message.text
     user = User.select().where(User.col_creator == update.effective_user.id).first()
     if not user.birthdays.select().where(Birthdays.col_name == name):
@@ -253,7 +256,7 @@ async def _find_name(update, context):
     return ADD_NOTE
 
 
-async def _save_note(update, context):
+async def _save_note(update, context: ContextTypes.DEFAULT_TYPE):
     note = update.message.text
     user = User.select().where(User.col_creator == update.effective_user.id).first()
     Birthdays.update(col_note=note).where(
@@ -265,13 +268,13 @@ async def _save_note(update, context):
     return ConversationHandler.END
 
 
-async def delete_birthday(update, context):
+async def delete_birthday(update, context: ContextTypes.DEFAULT_TYPE):
     list(update, context)
     await update.message.reply_text(text(update, "DeleteBirthday", "print_name"))
     return DEL_NAME
 
 
-async def _del_name(update, context):
+async def _del_name(update, context: ContextTypes.DEFAULT_TYPE):
     del_name = update.message.text
     user = User.select().where(User.col_creator == update.effective_user.id).first()
     query = Birthdays.delete().where(
@@ -285,7 +288,7 @@ async def _del_name(update, context):
     return ConversationHandler.END
 
 
-async def list(update, context):
+async def list(update, context: ContextTypes.DEFAULT_TYPE):
     message = text(update, "List", "head") + "\n"
     border = "=" * 30
     today = datetime.date.today()
@@ -347,11 +350,11 @@ async def list(update, context):
         await update.message.reply_text(message)
 
 
-async def stop(update, context):
+async def stop(update, context: ContextTypes.DEFAULT_TYPE):
     return ConversationHandler.END
 
 
-async def start(update, context):
+async def start(update, context: ContextTypes.DEFAULT_TYPE):
     if not User.select().where(User.col_creator == update.effective_user.id):
         User.create(col_creator=update.effective_user.id)
     await update.message.reply_text(text(update, "Misc", "start"))
@@ -391,7 +394,7 @@ describe = ConversationHandler(
 )
 
 
-async def error_handler(update, context):
+async def error_handler(update, context: ContextTypes.DEFAULT_TYPE):
     exc_info = context.error
 
     error_traceback = traceback.format_exception(
@@ -429,9 +432,11 @@ application.add_handler(describe, 4)
 # application.add_handler(CommandHandler('start', start_callback))
 
 
-application.job_queue.run_daily(
-    reminder, time=datetime.time(hour=9, minute=0, second=0)
+job_queue = application.job_queue
+job_queue.run_daily(
+    callback=reminder,
+    time=datetime.time(hour=9, minute=0, tzinfo=pytz.timezone("Europe/Kyiv")),
 )
 
-application.run_polling()
-# updater.idle()
+
+application.run_polling(allowed_updates=Update.ALL_TYPES)
