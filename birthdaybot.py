@@ -14,18 +14,9 @@ from telegram.ext import (
     CallbackQueryHandler,
     ContextTypes,
     JobQueue,
-)
-from telegram.ext import filters, Defaults
-
-
-# from peewee import (
-#     Model,
-#     PostgresqlDatabase,
-#     TextField,
-#     SmallIntegerField,
-#     CharField,
-#     ForeignKeyField,
-# )
+    filters
+) 
+import requests
 
 logging.basicConfig(
     filename="birthdaybot_log.txt",
@@ -41,43 +32,6 @@ BOT_TOKEN = config["Bot"]["bot_token"]
 text_config = configparser.ConfigParser()
 text_config.read(r"conf_en.ini")
 
-
-# psql_db = PostgresqlDatabase(
-#     config["Database"]["name"],
-#     user=config["Database"]["user"],
-#     password=config["Database"]["password"],
-# )
-
-
-# class BaseModel(Model):
-#     class Meta:
-#         database = psql_db
-
-
-# class User(BaseModel):
-#     col_creator = CharField()
-#     col_language = CharField(default="en")
-
-
-# class Birthdays(BaseModel):
-#     col_name = CharField()
-#     col_day = SmallIntegerField()
-#     col_month = SmallIntegerField()
-#     col_year = SmallIntegerField(null=True)
-#     col_note = TextField(null=True)
-#     col_creator = ForeignKeyField(User, backref="birthdays")
-
-
-# with psql_db:
-#     psql_db.create_tables([Birthdays, User])
-
-
-defaults = Defaults(tzinfo=pytz.timezone("Europe/Kyiv"))
-
-# updater = Updater(
-#     BOT_TOKEN,
-#     defaults=defaults,
-# )
 application = Application.builder().token(BOT_TOKEN).build()
 
 # commands = [
@@ -93,7 +47,7 @@ application = Application.builder().token(BOT_TOKEN).build()
 # bot.set_my_commands(commands)
 
 
-ADD_NAME, ADD_DATE, ADD_NOTE, DEL_NAME, DESC_NAME, CHANGE_LANG = range(6)
+ADD_2, ADD_3, DEL_2, CHANGE_2, CHANGE_3, LANG_2 = range(6)
 
 
 async def help(update, context: ContextTypes.DEFAULT_TYPE):
@@ -112,41 +66,42 @@ async def help(update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 
-async def reminder(context: ContextTypes.DEFAULT_TYPE):  # ContextTypes.DEFAULT_TYPE
-    print("lol")
-    await context.bot.send_message(chat_id=CREATOR_ID, text="One message every minute")
+async def reminder(context: ContextTypes.DEFAULT_TYPE):
+    # await context.bot.send_message(chat_id=CREATOR_ID, text="One message every minute")
     update = None
-    when_remind_dict = {
-        datetime.date.today() + datetime.timedelta(days=7): "week",
-        datetime.date.today() + datetime.timedelta(days=1): "tomorrow",
-        datetime.date.today(): "today",
-    }
-    for when_remind in when_remind_dict:
-        for birthday in Birthdays.select().where(
-            (Birthdays.col_day == when_remind.day)
-            & (Birthdays.col_month == when_remind.month)
-        ):
-            lang = User.get(User.id == birthday.col_creator).col_language
-            name = birthday.col_name
-            note = birthday.col_note
-            message = text(update, "Reminder", "message_start", lang=lang).format(
-                name=name,
-                when=text(update, "Reminder", when_remind_dict[when_remind], lang=lang),
-            )
-            if birthday.col_year:
-                age = when_remind.year - birthday.col_year
-                message += text(update, "Reminder", "message_age", lang=lang).format(
-                    age=age
-                )
-            if note:
-                message += "\n" + text(
-                    update, "Reminder", "message_note", lang=lang
-                ).format(note=note)
-            message += "\n" + text(update, "Reminder", "message_end", lang=lang)
-            await context.bot.send_message(
-                chat_id=User.get(User.id == birthday.col_creator).col_creator,
-                text=message,
-            )
+    response = requests.get("http://127.0.0.1/birthdays/incoming")
+    print(response)
+    # when_remind_dict = {
+    #     datetime.date.today() + datetime.timedelta(days=7): "week",
+    #     datetime.date.today() + datetime.timedelta(days=1): "tomorrow",
+    #     datetime.date.today(): "today",
+    # }
+    # for when_remind in when_remind_dict:
+    #     for birthday in Birthdays.select().where(
+    #         (Birthdays.col_day == when_remind.day)
+    #         & (Birthdays.col_month == when_remind.month)
+    #     ):
+    #         lang = User.get(User.id == birthday.col_creator).col_language
+    #         name = birthday.col_name
+    #         note = birthday.col_note
+    #         message = text(update, "Reminder", "message_start", lang=lang).format(
+    #             name=name,
+    #             when=text(update, "Reminder", when_remind_dict[when_remind], lang=lang),
+    #         )
+    #         if birthday.col_year:
+    #             age = when_remind.year - birthday.col_year
+    #             message += text(update, "Reminder", "message_age", lang=lang).format(
+    #                 age=age
+    #             )
+    #         if note:
+    #             message += "\n" + text(
+    #                 update, "Reminder", "message_note", lang=lang
+    #             ).format(note=note)
+    #         message += "\n" + text(update, "Reminder", "message_end", lang=lang)
+    #         await context.bot.send_message(
+    #             chat_id=User.get(User.id == birthday.col_creator).col_creator,
+    #             text=message,
+    #         )
 
 
 def text(update, section, key, lang=None):
@@ -166,10 +121,10 @@ async def language(update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         text(update, "Language", "choose"), reply_markup=reply_markup
     )
-    return CHANGE_LANG
+    return LANG_2
 
 
-async def _change_language(update, context: ContextTypes.DEFAULT_TYPE):
+async def _language_2(update, context: ContextTypes.DEFAULT_TYPE):
     answer = update.callback_query.data
     User.update(col_language=answer).where(
         User.col_creator == update.effective_user.id
@@ -182,14 +137,12 @@ async def _change_language(update, context: ContextTypes.DEFAULT_TYPE):
     return ConversationHandler.END
 
 
-async def add_birthday(
-    update, context: ContextTypes.DEFAULT_TYPE
-):  # change function names to add_1, add_2 or similar
+async def add_birthday(update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(text(update, "AddBirthday", "print_name"))
     return ADD_NAME
 
 
-async def _add_name(update, context: ContextTypes.DEFAULT_TYPE):
+async def _add_birthday_2(update, context: ContextTypes.DEFAULT_TYPE):
     name = update.message.text
     user = User.select().where(User.col_creator == update.effective_user.id).first()
     if len(name) > 255:
@@ -203,7 +156,7 @@ async def _add_name(update, context: ContextTypes.DEFAULT_TYPE):
     return ADD_DATE
 
 
-async def _save_birthday(update, context: ContextTypes.DEFAULT_TYPE):
+async def _add_birthday_3(update, context: ContextTypes.DEFAULT_TYPE):
     date = update.message.text
     try:
         if not date[2] == ".":
@@ -243,7 +196,7 @@ async def add_note(update, context: ContextTypes.DEFAULT_TYPE):
     return DESC_NAME
 
 
-async def _find_name(update, context: ContextTypes.DEFAULT_TYPE):
+async def _add_note_2(update, context: ContextTypes.DEFAULT_TYPE):
     name = update.message.text
     user = User.select().where(User.col_creator == update.effective_user.id).first()
     if not user.birthdays.select().where(Birthdays.col_name == name):
@@ -256,7 +209,7 @@ async def _find_name(update, context: ContextTypes.DEFAULT_TYPE):
     return ADD_NOTE
 
 
-async def _save_note(update, context: ContextTypes.DEFAULT_TYPE):
+async def _add_note_3(update, context: ContextTypes.DEFAULT_TYPE):
     note = update.message.text
     user = User.select().where(User.col_creator == update.effective_user.id).first()
     Birthdays.update(col_note=note).where(
@@ -274,7 +227,7 @@ async def delete_birthday(update, context: ContextTypes.DEFAULT_TYPE):
     return DEL_NAME
 
 
-async def _del_name(update, context: ContextTypes.DEFAULT_TYPE):
+async def _delete_birthday_2(update, context: ContextTypes.DEFAULT_TYPE):
     del_name = update.message.text
     user = User.select().where(User.col_creator == update.effective_user.id).first()
     query = Birthdays.delete().where(
@@ -294,60 +247,60 @@ async def list(update, context: ContextTypes.DEFAULT_TYPE):
     today = datetime.date.today()
     today_added = 0
 
-    user = (
-        User.select()
-        .where(User.col_creator == update.effective_user.id)
-        .first()
-        .birthdays
-    )
+    # user = (
+    #     User.select()
+    #     .where(User.col_creator == update.effective_user.id)
+    #     .first()
+    #     .birthdays
+    # )
 
-    for birthday in user.select().order_by(Birthdays.col_month, Birthdays.col_day):
-        name, note = birthday.col_name, birthday.col_note
-        day, month, year = (
-            str(birthday.col_day),
-            text(update, "Month", str(birthday.col_month)),
-            str(birthday.col_year),
-        )
+    # for birthday in user.select().order_by(Birthdays.col_month, Birthdays.col_day):
+    #     name, note = birthday.col_name, birthday.col_note
+    #     day, month, year = (
+    #         str(birthday.col_day),
+    #         text(update, "Month", str(birthday.col_month)),
+    #         str(birthday.col_year),
+    #     )
 
-        if datetime.date(today.year, birthday.col_month, int(day)) == today:
-            today_birthday = text(update, "List", "today_birthday").format(name=name)
-            message += f"{border}\n{day} {month} --- {today_birthday}\n{border}\n"
-            today_added = 1
-            continue
-        elif (
-            datetime.date(today.year, birthday.col_month, int(day)) > today
-            and not today_added
-        ):
-            word_today = text(update, "List", "today")
-            today_month = text(update, "Month", str(today.month))
-            message += (
-                f"{border}\n{today.day} {today_month} --- {word_today}\n{border}\n"
-            )
-            today_added = 1
-        space = "-"
-        if len(name) < 9:
-            space = "-" * (10 - len(name))
-        message += f"{day} {month}"
-        if birthday.col_year:
-            message += f", {year}"
-        message += f"  {space}  {name}"
-        if note:
-            message += f" ({note})\n"
-        else:
-            message += f"\n"
+    #     if datetime.date(today.year, birthday.col_month, int(day)) == today:
+    #         today_birthday = text(update, "List", "today_birthday").format(name=name)
+    #         message += f"{border}\n{day} {month} --- {today_birthday}\n{border}\n"
+    #         today_added = 1
+    #         continue
+    #     elif (
+    #         datetime.date(today.year, birthday.col_month, int(day)) > today
+    #         and not today_added
+    #     ):
+    #         word_today = text(update, "List", "today")
+    #         today_month = text(update, "Month", str(today.month))
+    #         message += (
+    #             f"{border}\n{today.day} {today_month} --- {word_today}\n{border}\n"
+    #         )
+    #         today_added = 1
+    #     space = "-"
+    #     if len(name) < 9:
+    #         space = "-" * (10 - len(name))
+    #     message += f"{day} {month}"
+    #     if birthday.col_year:
+    #         message += f", {year}"
+    #     message += f"  {space}  {name}"
+    #     if note:
+    #         message += f" ({note})\n"
+    #     else:
+    #         message += f"\n"
 
-    if message == text(update, "List", "head"):
-        await update.message.reply_text(
-            text(update, "List", "empty").format(newline="\n")
-        )
-    else:
-        if today_added == 0:
-            today_month = text(update, "Month", str(today.month))
-            word_today = text(update, "List", "today")
-            message += (
-                f"{border}\n{today.day} {today_month} --- {word_today}\n{border}\n"
-            )
-        await update.message.reply_text(message)
+    # if message == text(update, "List", "head"):
+    #     await update.message.reply_text(
+    #         text(update, "List", "empty").format(newline="\n")
+    #     )
+    # else:
+    #     if today_added == 0:
+    #         today_month = text(update, "Month", str(today.month))
+    #         word_today = text(update, "List", "today")
+    #         message += (
+    #             f"{border}\n{today.day} {today_month} --- {word_today}\n{border}\n"
+    #         )
+    #     await update.message.reply_text(message)
 
 
 async def stop(update, context: ContextTypes.DEFAULT_TYPE):
@@ -364,8 +317,8 @@ async def start(update, context: ContextTypes.DEFAULT_TYPE):
 add = ConversationHandler(
     entry_points=[CommandHandler("add_birthday", add_birthday)],
     states={
-        ADD_NAME: [MessageHandler(filters.TEXT & (~filters.COMMAND), _add_name)],
-        ADD_DATE: [MessageHandler(filters.TEXT & (~filters.COMMAND), _save_birthday)],
+        ADD_2: [MessageHandler(filters.TEXT & (~filters.COMMAND), _add_birthday_2)],
+        ADD_3: [MessageHandler(filters.TEXT & (~filters.COMMAND), _add_birthday_3)],
     },
     fallbacks=[
         MessageHandler(filters.COMMAND, stop),
@@ -375,7 +328,9 @@ add = ConversationHandler(
 delete = ConversationHandler(
     entry_points=[CommandHandler("delete_birthday", delete_birthday)],
     states={
-        DEL_NAME: [MessageHandler(filters.TEXT & (~filters.COMMAND), _del_name)],
+        DEL_2: [
+            MessageHandler(filters.TEXT & (~filters.COMMAND), _delete_birthday_2)
+        ],
     },
     fallbacks=[
         MessageHandler(filters.COMMAND, stop),
@@ -385,8 +340,8 @@ delete = ConversationHandler(
 describe = ConversationHandler(
     entry_points=[CommandHandler("add_note", add_note)],
     states={
-        DESC_NAME: [MessageHandler(filters.TEXT & (~filters.COMMAND), _find_name)],
-        ADD_NOTE: [MessageHandler(filters.TEXT & (~filters.COMMAND), _save_note)],
+        CHANGE_2: [MessageHandler(filters.TEXT & (~filters.COMMAND), _add_note_2)],
+        CHANGE_3: [MessageHandler(filters.TEXT & (~filters.COMMAND), _add_note_3)],
     },
     fallbacks=[
         MessageHandler(filters.COMMAND, stop),
@@ -423,7 +378,7 @@ application.add_handler(CommandHandler("start", start, 0))
 application.add_handler(CommandHandler("stop", stop), 0)
 application.add_handler(CommandHandler("language", language), 1)
 application.add_handler(
-    CallbackQueryHandler(_change_language, pattern="ua|en"),
+    CallbackQueryHandler(_language_2, pattern="ua|en"),
     0,
 )
 application.add_handler(add, 2)
