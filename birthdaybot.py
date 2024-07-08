@@ -20,7 +20,7 @@ import requests
 
 logging.basicConfig(
     filename="birthdaybot_log.txt",
-    level=logging.DEBUG,
+    level=logging.INFO,
     format=" %(asctime)s - %(levelname)s - %(message)s",
 )
 
@@ -52,19 +52,17 @@ ADD_2, ADD_3, DEL_2, CHANGE_2, CHANGE_3, LANG_2 = range(6)
 
 async def help(update, context: ContextTypes.DEFAULT_TYPE):
     await update.effective_message.reply_text(
-        f"""
-    {text(update, "Help", "head")}:
-    /list - {text(update, "Help", "list")}
-    /add_birthday - {text(update, "Help", "add_birthday")} 
-    /delete_birthday - {text(update, "Help", "delete_birthday")}
-    /add_note - {text(update, "Help", "add_note")}
-    /langauge - {text(update, "Help", "language")}
-
-    /help - {text(update, "Help", "help")}
-    /stop - {text(update, "Help", "stop")}
-    """
+        """
+        Commands to use:
+        /list - your added birthdays
+        /add_birthday - adds a birthday to your list
+        /delete_birthday - deletes a birthday from your list
+        /add_note - add some info about someone
+        /language - change Bot's language
+        /help - general info
+        /stop - to stop
+        """
     )
-
 
 async def reminder(context: ContextTypes.DEFAULT_TYPE):
     # await context.bot.send_message(chat_id=CREATOR_ID, text="One message every minute")
@@ -84,77 +82,34 @@ async def reminder(context: ContextTypes.DEFAULT_TYPE):
     #         lang = User.get(User.id == birthday.col_creator).col_language
     #         name = birthday.col_name
     #         note = birthday.col_note
-    #         message = text(update, "Reminder", "message_start", lang=lang).format(
-    #             name=name,
-    #             when=text(update, "Reminder", when_remind_dict[when_remind], lang=lang),
-    #         )
+    #         message = f"Hi there. It is {name}'s birthday {when_remind_dict[when_remind]}"
     #         if birthday.col_year:
     #             age = when_remind.year - birthday.col_year
-    #             message += text(update, "Reminder", "message_age", lang=lang).format(
-    #                 age=age
-    #             )
+    #             message += f"He/She is turning {age}!"
     #         if note:
-    #             message += "\n" + text(
-    #                 update, "Reminder", "message_note", lang=lang
-    #             ).format(note=note)
-    #         message += "\n" + text(update, "Reminder", "message_end", lang=lang)
+    #             message += f"\n(your note: {note})"
+    #         message += "\nI hope you didn't forget? :)"
     #         await context.bot.send_message(
     #             chat_id=User.get(User.id == birthday.col_creator).col_creator,
     #             text=message,
     #         )
 
-
-def text(update, section, key, lang=None):
-    lang = "en"
-    text_config.read(f"conf_{lang}.ini")
-    return text_config[section][key]
-
-
-async def language(update, context: ContextTypes.DEFAULT_TYPE):
-    keyboard = [
-        [
-            InlineKeyboardButton("English", callback_data="en"),
-            InlineKeyboardButton("Українська", callback_data="ua"),
-        ],
-    ]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-    await update.message.reply_text(
-        text(update, "Language", "choose"), reply_markup=reply_markup
-    )
-    return LANG_2
-
-
-async def _language_2(update, context: ContextTypes.DEFAULT_TYPE):
-    answer = update.callback_query.data
-    User.update(col_language=answer).where(
-        User.col_creator == update.effective_user.id
-    ).execute()
-    text_config.read(f"conf_{answer}.ini")
-    await update.callback_query.edit_message_text(
-        text=text(update, "Language", "changed")
-    )
-    help(update, context)
-    return ConversationHandler.END
-
-
 async def add_birthday(update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text(text(update, "AddBirthday", "print_name"))
-    return ADD_NAME
-
+    await update.message.reply_text("Print person's name:")
+    return ADD_2
 
 async def _add_birthday_2(update, context: ContextTypes.DEFAULT_TYPE):
     name = update.message.text
-    user = User.select().where(User.col_creator == update.effective_user.id).first()
-    if len(name) > 255:
-        await update.message.reply_text(text(update, "AddBirthday", "too_long"))
-        return ADD_NAME
-    if user.birthdays.select().where(Birthdays.col_name == name).first():
-        await update.message.reply_text(text(update, "AddBirthday", "already_taken"))
-        return ADD_NAME
+    # user = User.select().where(User.col_creator == update.effective_user.id).first()
+    # if len(name) > 255:
+    #     await update.message.reply_text("This name is too long. Choose another one:")
+    #     return ADD_NAME
+    # if user.birthdays.select().where(Birthdays.col_name == name).first():
+    #     await update.message.reply_text("This name is already taken. Choose another one:")
+    #     return ADD_NAME
     context.user_data["current_name"] = name
-    await update.message.reply_text(text(update, "AddBirthday", "print_date"))
+    await update.message.reply_text("Great! Print a date (format example: 22.02.2002 or 22.02):")
     return ADD_DATE
-
 
 async def _add_birthday_3(update, context: ContextTypes.DEFAULT_TYPE):
     date = update.message.text
@@ -164,7 +119,7 @@ async def _add_birthday_3(update, context: ContextTypes.DEFAULT_TYPE):
         day, month = int(date[:2]), int(date[3:5])
         if day == 29 and month == 2:
             await update.message.reply_text(
-                text(update, "AddBirthday", "29th").format(newline1="\n", newline2="\n")
+                "This is an unusual date\nI will ask you to choose a different date like 01.03 or 28.02 and then add a note that it is actually on 29.02 by using /add_note command\nSorry for the inconvenience"
             )
             return ADD_DATE
         year = None
@@ -176,7 +131,7 @@ async def _add_birthday_3(update, context: ContextTypes.DEFAULT_TYPE):
                 raise ValueError
         datetime.date(datetime.date.today().year, month, day)
     except Exception:
-        await update.message.reply_text(text(update, "AddBirthday", "invalid_date"))
+        await update.message.reply_text("This is an invalid date. Choose another one:")
         return ADD_DATE
     Birthdays.create(
         col_name=context.user_data["current_name"],
@@ -185,29 +140,24 @@ async def _add_birthday_3(update, context: ContextTypes.DEFAULT_TYPE):
         col_year=year,
         col_creator=User.get(User.col_creator == update.effective_user.id),
     )
-    await update.message.reply_text(text(update, "AddBirthday", "added"))
+    await update.message.reply_text("Successfully added!")
     help(update, context)
     return ConversationHandler.END
 
-
 async def add_note(update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text(text(update, "AddNote", "print_name"))
+    await update.message.reply_text("About whom you want to add a note? (print a name)")
     list(update, context)
     return DESC_NAME
-
 
 async def _add_note_2(update, context: ContextTypes.DEFAULT_TYPE):
     name = update.message.text
     user = User.select().where(User.col_creator == update.effective_user.id).first()
     if not user.birthdays.select().where(Birthdays.col_name == name):
-        await update.message.reply_text(text(update, "AddNote", "invalid_name"))
+        await update.message.reply_text("No such person in your list. Try again:")
         return DESC_NAME
     context.user_data["current_name"] = name
-    await update.message.reply_text(
-        text(update, "AddNote", "print_desc").format(newline="\n")
-    )
+    await update.message.reply_text("Print a description:\n(it could be a hint for a present or some notes for the future)")
     return ADD_NOTE
-
 
 async def _add_note_3(update, context: ContextTypes.DEFAULT_TYPE):
     note = update.message.text
@@ -216,16 +166,14 @@ async def _add_note_3(update, context: ContextTypes.DEFAULT_TYPE):
         (Birthdays.col_name == context.user_data["current_name"])
         & (Birthdays.col_creator == user.id)
     ).execute()
-    await update.message.reply_text(text(update, "AddNote", "added"))
+    await update.message.reply_text("Successfully added!")
     help(update, context)
     return ConversationHandler.END
 
-
 async def delete_birthday(update, context: ContextTypes.DEFAULT_TYPE):
     list(update, context)
-    await update.message.reply_text(text(update, "DeleteBirthday", "print_name"))
+    await update.message.reply_text("Which one to delete? (print a name)")
     return DEL_NAME
-
 
 async def _delete_birthday_2(update, context: ContextTypes.DEFAULT_TYPE):
     del_name = update.message.text
@@ -234,18 +182,17 @@ async def _delete_birthday_2(update, context: ContextTypes.DEFAULT_TYPE):
         (Birthdays.col_creator == user) & (Birthdays.col_name == del_name)
     )
     if not await query.execute():
-        await update.message.reply_text(text(update, "DeleteBirthday", "invalid_name"))
+        await update.message.reply_text("No such person in your list. Try again:")
         return DEL_NAME
-    await update.message.reply_text(text(update, "DeleteBirthday", "deleted"))
+    await update.message.reply_text("Successfully deleted!")
     help(update, context)
     return ConversationHandler.END
 
-
 async def list(update, context: ContextTypes.DEFAULT_TYPE):
-    message = text(update, "List", "head") + "\n"
-    border = "=" * 30
-    today = datetime.date.today()
-    today_added = 0
+    # message = "Your list of birthdays:\n"
+    # border = "=" * 30
+    # today = datetime.date.today()
+    # today_added = 0
 
     # user = (
     #     User.select()
@@ -258,12 +205,12 @@ async def list(update, context: ContextTypes.DEFAULT_TYPE):
     #     name, note = birthday.col_name, birthday.col_note
     #     day, month, year = (
     #         str(birthday.col_day),
-    #         text(update, "Month", str(birthday.col_month)),
+    #         ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"][birthday.col_month - 1],
     #         str(birthday.col_year),
     #     )
 
     #     if datetime.date(today.year, birthday.col_month, int(day)) == today:
-    #         today_birthday = text(update, "List", "today_birthday").format(name=name)
+    #         today_birthday = f"today is {name}'s birthday!"
     #         message += f"{border}\n{day} {month} --- {today_birthday}\n{border}\n"
     #         today_added = 1
     #         continue
@@ -271,8 +218,8 @@ async def list(update, context: ContextTypes.DEFAULT_TYPE):
     #         datetime.date(today.year, birthday.col_month, int(day)) > today
     #         and not today_added
     #     ):
-    #         word_today = text(update, "List", "today")
-    #         today_month = text(update, "Month", str(today.month))
+    #         word_today = "today"
+    #         today_month = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"][today.month - 1]
     #         message += (
     #             f"{border}\n{today.day} {today_month} --- {word_today}\n{border}\n"
     #         )
@@ -289,30 +236,27 @@ async def list(update, context: ContextTypes.DEFAULT_TYPE):
     #     else:
     #         message += f"\n"
 
-    # if message == text(update, "List", "head"):
+    # if message == "Your list of birthdays:\n":
     #     await update.message.reply_text(
-    #         text(update, "List", "empty").format(newline="\n")
+    #         "Your list is empty for now\nAdd some birthdays with /add_birthday command"
     #     )
     # else:
     #     if today_added == 0:
-    #         today_month = text(update, "Month", str(today.month))
-    #         word_today = text(update, "List", "today")
+    #         today_month = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"][today.month - 1]
+    #         word_today = "today"
     #         message += (
     #             f"{border}\n{today.day} {today_month} --- {word_today}\n{border}\n"
     #         )
     #     await update.message.reply_text(message)
 
-
 async def stop(update, context: ContextTypes.DEFAULT_TYPE):
     return ConversationHandler.END
-
 
 async def start(update, context: ContextTypes.DEFAULT_TYPE):
     if not User.select().where(User.col_creator == update.effective_user.id):
         User.create(col_creator=update.effective_user.id)
-    await update.message.reply_text(text(update, "Misc", "start"))
+    await update.message.reply_text("Hi")
     help(update, context)
-
 
 add = ConversationHandler(
     entry_points=[CommandHandler("add_birthday", add_birthday)],
@@ -348,7 +292,6 @@ describe = ConversationHandler(
     ],
 )
 
-
 async def error_handler(update, context: ContextTypes.DEFAULT_TYPE):
     exc_info = context.error
 
@@ -368,7 +311,7 @@ async def error_handler(update, context: ContextTypes.DEFAULT_TYPE):
     )
 
     await context.bot.send_message(chat_id=CREATOR_ID, text=message, parse_mode="HTML")
-    await update.effective_user.send_message(text(update, "Misc", "error"))
+    await update.effective_user.send_message("Something went wrong. Report was sent to the creator of this bot")
 
 
 application.add_error_handler(error_handler)
