@@ -85,28 +85,52 @@ class BirthdaysSchema(Schema):
             raise ValidationError("Non-existent date")
         if date.today() < birthday:
             raise ValidationError("Future dates are forbidden")
+        
 
 
 birthdays_schema = BirthdaysSchema()
 
 
+# print_name = Enter the person's name:
+# too_long = That name is too long. Please choose a shorter one:
+# already_taken = That name is already in use. Please choose another one:
+# print_date = Great! Enter the date (format: DD.MM.YYYY or DD.MM):
+# 29th = February 29th is a special case{newline1}Please choose a different date like 01.03 or 28.02 and add a note that the actual birthday is on 29.02 using the /add_note command{newline2}Sorry for the inconvenience
+# invalid_date = That date is invalid. Please enter a valid date:
+# added = Birthday added successfully!
 async def add_birthday(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    print("add_birthday")
-    await update.message.reply_text("Print person's name:")
-    return ADD_2
+    # await update.message.reply_text("Enter the person's name:")
+    data = {
+        "name": "fewfew",
+        "day": 28,
+        "month": 2,
+        "year": 2020,
+        "note": "test note",
+    }
+    post_request(update.effective_user.id, data)
+    return ConversationHandler.END
+    # return ADD_2
 
 
 async def _add_birthday_2(update, context: ContextTypes.DEFAULT_TYPE):
     name = update.message.text
+
+    #check if name is too long
+    #check if name is already taken
+
     context.user_data["current_name"] = name
     await update.message.reply_text(
-        "Great! Print a date (format example: 22.02.2002 or 22.02):"
+        "Great! Enter the date (format: DD.MM.YYYY or DD.MM):"
     )
     return ADD_3
 
 
 async def _add_birthday_3(update, context: ContextTypes.DEFAULT_TYPE):
     date = update.message.text
+
+    #check if date is valid
+    #check if date is 29th of February
+
     context.user_data["current_date"] = date
     await update.message.reply_text(
         "Would you like to add a note for this reminder? If yes, please type your note now. If not, press 'skip'"
@@ -116,6 +140,10 @@ async def _add_birthday_3(update, context: ContextTypes.DEFAULT_TYPE):
 
 async def _add_birthday_4(update, context: ContextTypes.DEFAULT_TYPE):
     note = update.message.text
+
+    #skip button
+    #check if note is too long
+
     context.user_data["current_note"] = note
     day = int(
         context.user_data["current_date"][:2]
@@ -133,6 +161,10 @@ async def _add_birthday_4(update, context: ContextTypes.DEFAULT_TYPE):
         data["note"] = note
 
     post_request(update.effective_user.id, data)
+
+    #if error: return to the corresponding step
+
+
     await update.message.reply_text("Birthday added successfully!")
     return ConversationHandler.END
 
@@ -142,7 +174,7 @@ def post_request(id, data_json):
     public_key_response = user_session.get("http://127.0.0.1:8080/public-key")
 
     if public_key_response.status_code != 200:
-        print(f"Failed to get incoming birthdays. {public_key_response.status_code}")
+        print(f"Failed to get api key. {public_key_response.status_code}")
         exit(1)
     public_key_json = public_key_response.json()
     public_key = serialization.load_pem_public_key(
@@ -165,7 +197,7 @@ def post_request(id, data_json):
         params={"encrypted_bot_id": encrypted_data_base64, "id": 651472384},
     )
     if login_response.status_code != 200:
-        print(f"Failed to get incoming birthdays. {login_response.status_code}")
+        print(f"Failed to login to api. {login_response.status_code}")
         exit(1)
 
     csrf_access_token = user_session.cookies["csrf_access_token"]
@@ -175,11 +207,10 @@ def post_request(id, data_json):
 
     # post birthday
     post_birthday_response = user_session.post(
-        "http://127.0.0.1:8080/birthdays", json=data_json, headers=headers 
+        "http://127.0.0.1:8080/birthdays", json=data_json, headers=headers
     )
     if post_birthday_response.status_code != 201:
-        print(f"Failed to get incoming birthdays. {post_birthday_response.status_code}")
-        exit(1)
+        print(f"Failed to add birthday. {post_birthday_response.json()}")
     else:
         print(post_birthday_response.json())
 
