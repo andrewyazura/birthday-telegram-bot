@@ -1,7 +1,7 @@
 import requests
 import configparser
 
-from telegram import Update, BotCommand, Bot
+from telegram import Update, BotCommand, Bot, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import (
     ApplicationBuilder,
     Application,
@@ -73,19 +73,26 @@ class BirthdaysSchema(Schema):
 
     @validates_schema
     def valid_date(self, data, **kwargs):
-        try:
+        # try:
+        #     year = data["year"]
+        # except KeyError:
+        #     year = date.today().year - 1
+        if data.get("year"):
             year = data["year"]
-        except KeyError:
+        else:
             year = date.today().year - 1
+
         if (data["month"] == 2) and (data["day"] == 29):
-            raise ValidationError("29th of February is forbidden. Choose 28.02 or 1.03")
+            raise ValidationError(
+                "29th of February is forbidden. Choose 28.02 or 1.03:"
+            )
+
         try:
             birthday = date(year, data["month"], data["day"])
         except ValueError:
-            raise ValidationError("Non-existent date")
+            raise ValidationError("Invalid date, try again:")
         if date.today() < birthday:
-            raise ValidationError("Future dates are forbidden")
-        
+            raise ValidationError("Future dates are forbidden, try again:")
 
 
 birthdays_schema = BirthdaysSchema()
@@ -99,26 +106,33 @@ birthdays_schema = BirthdaysSchema()
 # invalid_date = That date is invalid. Please enter a valid date:
 # added = Birthday added successfully!
 async def add_birthday(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    # await update.message.reply_text("Enter the person's name:")
-    data = {
-        "name": "fewfew",
-        "day": 28,
-        "month": 2,
-        "year": 2020,
-        "note": "test note",
-    }
-    post_request(update.effective_user.id, data)
-    return ConversationHandler.END
-    # return ADD_2
+    context.user_data.clear()
+
+    await update.message.reply_text("Enter the person's name:")
+    # data = {
+    #     "name": "fewfew",
+    #     "day": 28,
+    #     "month": 2,
+    #     "year": 2020,
+    #     "note": "test note",
+    # }
+    # post_request(update.effective_user.id, data)
+    # return ConversationHandler.END
+    return ADD_2
 
 
 async def _add_birthday_2(update, context: ContextTypes.DEFAULT_TYPE):
     name = update.message.text
 
-    #check if name is too long
-    #check if name is already taken
+    if len(name) > 255:
+        await update.message.reply_text(
+            "That name is too long. Please choose a shorter one:"
+        )
+        return ADD_2
 
-    context.user_data["current_name"] = name
+    context.user_data["name"] = name
+    if context.user_data.get("day"):
+        return ADD_4  # try to post request again
     await update.message.reply_text(
         "Great! Enter the date (format: DD.MM.YYYY or DD.MM):"
     )
@@ -127,46 +141,117 @@ async def _add_birthday_2(update, context: ContextTypes.DEFAULT_TYPE):
 
 async def _add_birthday_3(update, context: ContextTypes.DEFAULT_TYPE):
     date = update.message.text
+    date_json = {
+        "day": int(date[:2]),
+        "month": int(date[3:5]),
+    }
 
-    #check if date is valid
-    #check if date is 29th of February
+    if len(date) == 10:
+        date_json["year"] = int(date[-4:])
 
-    context.user_data["current_date"] = date
-    await update.message.reply_text(
-        "Would you like to add a note for this reminder? If yes, please type your note now. If not, press 'skip'"
-    )
+    try:
+        birthdays_schema.valid_date(date_json)
+    except ValidationError as e:
+        await update.message.reply_text(e.messages)
+        return ADD_3
+
+    context.user_data["day"] = date_json["day"]
+    context.user_data["month"] = date_json["month"]
+    if "year" in date_json:
+        context.user_data["year"] = date_json["year"]
+
+    if "note" not in context.user_data and "skipped_note" not in context.user_data:
+        reply_markup = InlineKeyboardMarkup(
+            [[InlineKeyboardButton("skip", callback_data=str("skip"))]]
+        )
+        await update.message.reply_text(
+            "Would you like to add a note for this reminder? If yes, please type your note now. If not, press 'skip'",
+            reply_markup=reply_markup,
+        )
     return ADD_4
 
 
+# async def skip_button_handler(update, context):
+#     query = update.callback_query
+#     await query.answer()
+
+#     if query.data == "skip":
+#         context.user_data["skip_note"] = True
+#         await query.edit_message_text(text="You chose to skip adding a note.")
+#         return ADD_4
+
+
+async def handle_skip(update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    context.user_data["skipped_note"] = True
+    await _add_birthday_4(update, context)
+
+
 async def _add_birthday_4(update, context: ContextTypes.DEFAULT_TYPE):
-    note = update.message.text
+    # if skip button was pressed - note = None, if note in context and not None - not = value from context, else note = update.message.text
+    if context.user_data.get("skipped_note") == True:
+        note = None
+    elif context.user_data.get("note") is not None:
+        note = context.user_data["note"]
+    else:
+        note = update.message.text
+        context.user_data["note"] = note
+    #
+    message = update.message if update.message else update.callback_query.message
 
-    #skip button
-    #check if note is too long
+    # if context.user_data.get("skip_note"):
+    #     note = None
 
-    context.user_data["current_note"] = note
-    day = int(
-        context.user_data["current_date"][:2]
-    )  # maybe change for regex depending on points
-    month = int(context.user_data["current_date"][3:5])
+    # elif not context.user_data.get("note", default=False):
+    #     note = update.message.text
+
     data = {
-        "name": context.user_data["current_name"],
-        "day": day,
-        "month": month,
+        "name": context.user_data["name"],
+        "day": context.user_data["day"],
+        "month": context.user_data["month"],
     }
-    if len(context.user_data["current_date"]) == 10:
-        year = int(context.user_data["current_date"][-4:])
-        data["year"] = year
-    if note:
+    if "year" in context.user_data:
+        data["year"] = context.user_data["year"]
+    if context.user_data.get("note"):
         data["note"] = note
 
-    post_request(update.effective_user.id, data)
+    response = post_request(update.effective_user.id, data)
+    # handle skips
+    if response.status_code == 422:
+        if response.json()["field"] == "name":
+            await message.reply_text(
+                "Name is already in use. Please choose another one:"
+            )
+            # remove from context
+            context.user_data.pop("name")
+            return ADD_2
+        if response.json()["field"] == "date":
+            # DD.MM looks like link to telegram
+            await message.reply_text(
+                "Date is invalid. Please enter a valid date (format: DD.MM.YYYY or DD.MM):"
+            )
+            context.user_data.pop("day")
+            context.user_data.pop("month")
+            if context.user_data.get("year"):
+                context.user_data.pop("year")
+            return ADD_3
+    if response.status_code != 201:
+        await message.reply_text("Failed to add birthday. Please try again")
+        return ADD_2
 
-    #if error: return to the corresponding step
+    context.user_data.clear()
 
-
-    await update.message.reply_text("Birthday added successfully!")
+    # Check if the update is from a message or a callback query and set the message accordingly
+    await message.reply_text("Birthday added successfully! /list to see all birthdays")
     return ConversationHandler.END
+
+
+# File "/home/orehzzz/Desktop/birthday-telegram-bot/birthday_bot.py", line 222, in _add_birthday_4
+#     await update.message.reply_text(
+# AttributeError: 'NoneType' object has no attribute 'reply_text'
+
+# happened when I pressed skip button and had not unique name
 
 
 def post_request(id, data_json):
@@ -213,6 +298,7 @@ def post_request(id, data_json):
         print(f"Failed to add birthday. {post_birthday_response.json()}")
     else:
         print(post_birthday_response.json())
+    return post_birthday_response
 
 
 # async def _add_birthday_3(update, context: ContextTypes.DEFAULT_TYPE):
@@ -315,7 +401,8 @@ add = ConversationHandler(
         ADD_2: [MessageHandler(filters.TEXT & (~filters.COMMAND), _add_birthday_2)],
         ADD_3: [MessageHandler(filters.TEXT & (~filters.COMMAND), _add_birthday_3)],
         ADD_4: [
-            MessageHandler(filters.TEXT, _add_birthday_4)
+            CallbackQueryHandler(handle_skip, pattern="skip"),
+            MessageHandler(filters.TEXT & (~filters.COMMAND), _add_birthday_4),
         ],  # later add for skip button
     },
     fallbacks=[
@@ -323,6 +410,7 @@ add = ConversationHandler(
     ],
 )
 application.add_handler(add, 2)
+# application.add_handler(CallbackQueryHandler(skip_button_handler))
 
 
 application.run_polling(allowed_updates=Update.ALL_TYPES)
