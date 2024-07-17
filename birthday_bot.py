@@ -1,14 +1,12 @@
 import requests
 import configparser
 
-from telegram import Update, BotCommand, Bot, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram import Update, BotCommand, Bot
 from telegram.ext import (
     ApplicationBuilder,
-    Application,
     CommandHandler,
     ConversationHandler,
     MessageHandler,
-    CallbackQueryHandler,
     ContextTypes,
     filters,
 )
@@ -21,6 +19,7 @@ from cryptography.hazmat.primitives.asymmetric import padding
 from cryptography.hazmat.primitives import hashes
 import base64
 import requests
+import re
 
 
 class UserSessionManager:
@@ -56,13 +55,9 @@ class BirthdaysSchema(Schema):
 
     @validates_schema
     def valid_date(self, data, **kwargs):
-        # try:
-        #     year = data["year"]
-        # except KeyError:
-        #     year = date.today().year - 1
-        if data.get("year"):
+        try:
             year = data["year"]
-        else:
+        except KeyError:
             year = date.today().year - 1
 
         if (data["month"] == 2) and (data["day"] == 29):
@@ -80,7 +75,7 @@ class BirthdaysSchema(Schema):
 
 birthdays_schema = BirthdaysSchema()
 
-conv_handler_ref = None
+# conv_handler_ref = None
 
 
 # print_name = Enter the person's name:
@@ -91,26 +86,14 @@ conv_handler_ref = None
 # invalid_date = That date is invalid. Please enter a valid date:
 # added = Birthday added successfully!
 async def add_birthday(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    print("add_birthday")
     context.user_data.clear()
 
     await update.message.reply_text("Enter the person's name:")
-    # data = {
-    #     "name": "fewfew",
-    #     "day": 28,
-    #     "month": 2,
-    #     "year": 2020,
-    #     "note": "test note",
-    # }
-    # post_request(update.effective_user.id, data)
-    # return ConversationHandler.END
-    print("returning ADD_NAME")
+
     return ADD_NAME
 
 
 async def add_name(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    print("add_name")
-    # check_state(update, context)
     name = update.message.text
     if len(name) > 255:
         await update.message.reply_text(
@@ -120,34 +103,32 @@ async def add_name(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return ADD_NAME
 
     context.user_data["name"] = name
-    print(name)
-    print(context.user_data)
     if context.user_data.get("day"):
-        print("returning POST")
-        return await post_state(update, context)  # try to post request again
+        return await post_state(update, context)
     await update.message.reply_text(
-        "Great! Enter the date (format: DD.MM.YYYY or DD.MM):"
+        "Great! Enter the date (format: `DD.MM.YYYY` or `DD.MM`):"
     )
-    print("returning ADD_DATE")
     return ADD_DATE
 
 
 async def add_date(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    print("add_date")
-    check_state(update, context)
-    date = update.message.text
-    date_json = {
-        "day": int(date[:2]),
-        "month": int(date[3:5]),
-    }
+    date_text = update.message.text
+    ints_from_text = re.findall(r"\d+", date_text)
+    day = int(ints_from_text[0])
+    month = int(ints_from_text[1])
+    year = int(ints_from_text[2]) if len(ints_from_text) > 2 else None
 
-    if len(date) == 10:
-        date_json["year"] = int(date[-4:])
+    date_json = {
+        "day": day,
+        "month": month,
+    }
+    if year != None:
+        date_json["year"] = year
 
     try:
         birthdays_schema.valid_date(date_json)
     except ValidationError as e:
-        await update.message.reply_text(e.messages)
+        await update.message.reply_text("\n".join(e.messages))
         return ADD_DATE
 
     context.user_data["day"] = date_json["day"]
@@ -156,116 +137,68 @@ async def add_date(update: Update, context: ContextTypes.DEFAULT_TYPE):
         context.user_data["year"] = date_json["year"]
 
     if "note" in context.user_data or "skipped_note" in context.user_data:
-        print("returning POST")
         return await post_state(update, context)
 
     await update.message.reply_text(
         "Would you like to add a note for this reminder? If yes, please type your note now. If not, send /skip"
     )
-    print("returning ADD_NOTE")
     return ADD_NOTE
 
 
 async def skip_note(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    print("skip_note")
-    check_state(update, context)
     context.user_data["skipped_note"] = True
-    print("return post_state")
     return await post_state(update, context)
 
 
 async def add_note(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    print("add_note")
-    check_state(update, context)
-    # save if no note and not skipped/ mayby delete this check later
-    if (
-        context.user_data.get("skipped_note") is None
-        and context.user_data.get("note") is None
-    ):
-        note = update.message.text
-        context.user_data["note"] = note
-
+    note = update.message.text
+    context.user_data["note"] = note
     return await post_state(update, context)
-
-    # if context.user_data.get("skip_note"):
-    #     note = None
-
-    # elif not context.user_data.get("note", default=False):
-    #     note = update.message.text
-
-
-# File "/home/orehzzz/Desktop/birthday-telegram-bot/birthday_bot.py", line 222, in add_note
-#     await update.message.reply_text(
-# AttributeError: 'NoneType' object has no attribute 'replytext'
-
-# happened when I pressed skip button and had not unique name
 
 
 async def post_state(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    # handle update is from message or callback_query
-    # if update.message:
-    #     message = update.message
-    # else:
-    #     update.callback_query.answer()
-    #     message = update.callback_query.message
-    # return ADD_NAME
-    print("post_state")
-    print(context.user_data)
     data = {
         "name": context.user_data["name"],
         "day": context.user_data["day"],
         "month": context.user_data["month"],
     }
-    if "year" in context.user_data:
+    if context.user_data.get("year"):
         data["year"] = context.user_data["year"]
     if context.user_data.get("note") is not None:
         data["note"] = context.user_data["note"]
 
     response = post_request(update.effective_user.id, data)
 
-    # await message.reply_text("returning ADD_NAME, print name")
-    # return ADD_NAME
     # handle skips
     if response.status_code == 422:
         if response.json()["field"] == "name":
             if "name" in context.user_data:
-                print("removing name")
                 context.user_data.pop("name")
             await update.message.reply_text(
                 "Name is already in use. Please choose another one:"
             )
-            # remove from context
-            print(context.user_data)
-            print("returning ADD_NAME")
-            check_state(update, context)
             return ADD_NAME
         elif response.json()["field"] == "date":
-            # DD.MM looks like link to telegram
             await update.message.reply_text(
-                "Date is invalid. Please enter a valid date (format: DD.MM.YYYY or DD.MM):"
+                "Date is invalid. Please enter a valid date (format: `DD.MM.YYYY` or `DD.MM`):"
             )
             context.user_data.pop("day")
             context.user_data.pop("month")
             if context.user_data.get("year"):
                 context.user_data.pop("year")
-            print("returning ADD_DATE")
             return ADD_DATE
     elif response.status_code != 201:
         await update.message.reply_text("Failed to add birthday. Please try again")
-        print("returning ADD_NAME")
         return ADD_NAME
 
-    print("clearing context")
     context.user_data.clear()
     await update.message.reply_text(
         "Birthday added successfully! /list to see all birthdays"
     )
-    print("returning ConversationHandler.END")
     return ConversationHandler.END
 
 
 def post_request(id, data_json):
-    print("post_request")
     user_session = session_manager.get_session(id)
     public_key_response = user_session.get("http://127.0.0.1:8080/public-key")
 
@@ -311,22 +244,21 @@ def post_request(id, data_json):
         print(post_birthday_response.json())
     return post_birthday_response
 
+    # def check_state(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    #     if conv_handler_ref is None:
+    #         print("Conversation handler not found.")
+    #         return 1
+    #     conv_dict = conv_handler_ref._conversations
+    #     user_id = update.effective_user.id
+    #     chat_id = update.effective_chat.id
 
-def check_state(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if conv_handler_ref is None:
-        print("Conversation handler not found.")
-        return 1
-    conv_dict = conv_handler_ref._conversations
-    user_id = update.effective_user.id
-    chat_id = update.effective_chat.id
-
-    state = conv_dict.get((chat_id, user_id), ConversationHandler.END)
-    state_name = {
-        ADD_NAME: "ADD_NAME",
-        ADD_DATE: "ADD_DATE",
-        ADD_NOTE: "ADD_NOTE",
-        ConversationHandler.END: "END",
-    }
+    #     state = conv_dict.get((chat_id, user_id), ConversationHandler.END)
+    #     state_name = {
+    #         ADD_NAME: "ADD_NAME",
+    #         ADD_DATE: "ADD_DATE",
+    #         ADD_NOTE: "ADD_NOTE",
+    #         ConversationHandler.END: "END",
+    #     }
 
     print(f"Current state: {state_name.get(state, 'UNKNOWN')}")
 
@@ -364,9 +296,9 @@ def main() -> None:
         ],
         allow_reentry=True,
     )
-    conv_handler_ref = add
+    # conv_handler_ref = add
     application.add_handler(add)
-    application.add_handler(CommandHandler("check_state", check_state))
+    # application.add_handler(CommandHandler("check_state", check_state))
 
     application.run_polling(allowed_updates=Update.ALL_TYPES)
 

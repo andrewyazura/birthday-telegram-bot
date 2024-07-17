@@ -165,3 +165,4 @@ birthdaybot_log.txt
 request.py
 conf_gpt.ini
 conf_ua.ini
+create_language_config.py
