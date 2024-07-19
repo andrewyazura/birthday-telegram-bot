@@ -1,6 +1,4 @@
-import requests
 import configparser
-
 from telegram import Update, BotCommand, Bot
 from telegram.ext import (
     ApplicationBuilder,
@@ -10,38 +8,17 @@ from telegram.ext import (
     ContextTypes,
     filters,
 )
-
 from marshmallow import Schema, fields, validate, validates_schema, ValidationError
 from datetime import date
-
-from cryptography.hazmat.primitives import serialization
-from cryptography.hazmat.primitives.asymmetric import padding
-from cryptography.hazmat.primitives import hashes
-import base64
-import requests
 import re
-
-
-class UserSessionManager:
-    def __init__(self):
-        self.sessions = {}
-
-    def get_session(self, username):
-        if username not in self.sessions:
-            self.sessions[username] = requests.Session()
-        return self.sessions[username]
-
-
-# Example usage
-session_manager = UserSessionManager()
-# user1_session = session_manager.get_session("user1")
-# response = user1_session.get("https://example.com")
+from api_requests import post_request
 
 config = configparser.ConfigParser()
 config.read("config.ini")
-CREATOR_ID = config["Bot"]["creator_id"]
-BOT_TOKEN = config["Bot"]["bot_token"]
-# print(BOT_TOKEN)
+
+# CREATOR_ID = config["Main"]["creator_id"]
+BOT_TOKEN = config["Main"]["bot_token"]
+PUBLIC_KEY = None
 
 ADD_NAME, ADD_DATE, ADD_NOTE = range(3)
 
@@ -104,7 +81,7 @@ async def add_name(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     context.user_data["name"] = name
     if context.user_data.get("day"):
-        return await post_state(update, context)
+        return await post_birthday(update, context)
     await update.message.reply_text(
         "Great! Enter the date (format: `DD.MM.YYYY` or `DD.MM`):"
     )
@@ -137,7 +114,7 @@ async def add_date(update: Update, context: ContextTypes.DEFAULT_TYPE):
         context.user_data["year"] = date_json["year"]
 
     if "note" in context.user_data or "skipped_note" in context.user_data:
-        return await post_state(update, context)
+        return await post_birthday(update, context)
 
     await update.message.reply_text(
         "Would you like to add a note for this reminder? If yes, please type your note now. If not, send /skip"
@@ -147,16 +124,16 @@ async def add_date(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def skip_note(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data["skipped_note"] = True
-    return await post_state(update, context)
+    return await post_birthday(update, context)
 
 
 async def add_note(update: Update, context: ContextTypes.DEFAULT_TYPE):
     note = update.message.text
     context.user_data["note"] = note
-    return await post_state(update, context)
+    return await post_birthday(update, context)
 
 
-async def post_state(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def post_birthday(update: Update, context: ContextTypes.DEFAULT_TYPE):
     data = {
         "name": context.user_data["name"],
         "day": context.user_data["day"],
@@ -198,69 +175,23 @@ async def post_state(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return ConversationHandler.END
 
 
-def post_request(id, data_json):
-    user_session = session_manager.get_session(id)
-    public_key_response = user_session.get("http://127.0.0.1:8080/public-key")
+# def check_state(update: Update, context: ContextTypes.DEFAULT_TYPE):
+#     if conv_handler_ref is None:
+#         print("Conversation handler not found.")
+#         return 1
+#     conv_dict = conv_handler_ref._conversations
+#     user_id = update.effective_user.id
+#     chat_id = update.effective_chat.id
 
-    if public_key_response.status_code != 200:
-        print(f"Failed to get api key. {public_key_response.status_code}")
-        exit(1)
-    public_key_json = public_key_response.json()
-    public_key = serialization.load_pem_public_key(
-        public_key_json["public_key"].encode("utf-8")
-    )
-    bot_id = BOT_TOKEN.encode("utf-8")
+#     state = conv_dict.get((chat_id, user_id), ConversationHandler.END)
+#     state_name = {
+#         ADD_NAME: "ADD_NAME",
+#         ADD_DATE: "ADD_DATE",
+#         ADD_NOTE: "ADD_NOTE",
+#         ConversationHandler.END: "END",
+#     }
 
-    encrypted_data = public_key.encrypt(
-        bot_id,
-        padding.OAEP(
-            mgf=padding.MGF1(algorithm=hashes.SHA256()),
-            algorithm=hashes.SHA256(),
-            label=None,
-        ),
-    )
-    encrypted_data_base64 = base64.b64encode(encrypted_data).decode("utf-8")
-
-    login_response = user_session.get(
-        "http://127.0.0.1:8080/login",
-        params={"encrypted_bot_id": encrypted_data_base64, "id": 651472384},
-    )
-    if login_response.status_code != 200:
-        print(f"Failed to login to api. {login_response.status_code}")
-        exit(1)
-
-    csrf_access_token = user_session.cookies["csrf_access_token"]
-    print(user_session.cookies)
-
-    headers = {"X-CSRF-TOKEN": csrf_access_token}
-
-    # post birthday
-    post_birthday_response = user_session.post(
-        "http://127.0.0.1:8080/birthdays", json=data_json, headers=headers
-    )
-    if post_birthday_response.status_code != 201:
-        print(f"Failed to add birthday. {post_birthday_response.json()}")
-    else:
-        print(post_birthday_response.json())
-    return post_birthday_response
-
-    # def check_state(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    #     if conv_handler_ref is None:
-    #         print("Conversation handler not found.")
-    #         return 1
-    #     conv_dict = conv_handler_ref._conversations
-    #     user_id = update.effective_user.id
-    #     chat_id = update.effective_chat.id
-
-    #     state = conv_dict.get((chat_id, user_id), ConversationHandler.END)
-    #     state_name = {
-    #         ADD_NAME: "ADD_NAME",
-    #         ADD_DATE: "ADD_DATE",
-    #         ADD_NOTE: "ADD_NOTE",
-    #         ConversationHandler.END: "END",
-    #     }
-
-    print(f"Current state: {state_name.get(state, 'UNKNOWN')}")
+# print(f"Current state: {state_name.get(state, 'UNKNOWN')}")
 
 
 async def help(update: Update, context: ContextTypes.DEFAULT_TYPE):
