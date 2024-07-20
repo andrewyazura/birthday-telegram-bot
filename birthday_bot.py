@@ -1,4 +1,3 @@
-import configparser
 from telegram import Update, BotCommand, Bot
 from telegram.ext import (
     ApplicationBuilder,
@@ -12,13 +11,8 @@ from marshmallow import Schema, fields, validate, validates_schema, ValidationEr
 from datetime import date
 import re
 from api_requests import post_request
+from config import BOT_TOKEN
 
-config = configparser.ConfigParser()
-config.read("config.ini")
-
-# CREATOR_ID = config["Main"]["creator_id"]
-BOT_TOKEN = config["Main"]["bot_token"]
-PUBLIC_KEY = None
 
 ADD_NAME, ADD_DATE, ADD_NOTE = range(3)
 
