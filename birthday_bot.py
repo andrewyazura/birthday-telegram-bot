@@ -7,41 +7,14 @@ from telegram.ext import (
     ContextTypes,
     filters,
 )
-from marshmallow import Schema, fields, validate, validates_schema, ValidationError
-from datetime import date
+from marshmallow import ValidationError
 import re
+from schema import BirthdaysSchema
 from api_requests import post_request
 from config import BOT_TOKEN
 
 
 ADD_NAME, ADD_DATE, ADD_NOTE = range(3)
-
-
-class BirthdaysSchema(Schema):
-    name = fields.String(required=True, validate=validate.Length(max=255))
-    day = fields.Integer(required=True)
-    month = fields.Integer(required=True)
-    year = fields.Integer()
-    note = fields.String()
-
-    @validates_schema
-    def valid_date(self, data, **kwargs):
-        try:
-            year = data["year"]
-        except KeyError:
-            year = date.today().year - 1
-
-        if (data["month"] == 2) and (data["day"] == 29):
-            raise ValidationError(
-                "29th of February is forbidden. Choose 28.02 or 1.03:"
-            )
-
-        try:
-            birthday = date(year, data["month"], data["day"])
-        except ValueError:
-            raise ValidationError("Invalid date, try again:")
-        if date.today() < birthday:
-            raise ValidationError("Future dates are forbidden, try again:")
 
 
 birthdays_schema = BirthdaysSchema()
@@ -160,7 +133,7 @@ async def post_birthday(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return ADD_DATE
     elif response.status_code != 201:
         await update.message.reply_text("Failed to add birthday. Please try again")
-        return ADD_NAME
+        return ConversationHandler.END
 
     context.user_data.clear()
     await update.message.reply_text(
