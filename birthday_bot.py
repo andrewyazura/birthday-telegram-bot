@@ -18,18 +18,11 @@ ADD_NAME, ADD_DATE, ADD_NOTE = range(3)
 
 
 birthdays_schema = BirthdaysSchema()
-
 # conv_handler_ref = None
 
 
-# print_name = Enter the person's name:
-# too_long = That name is too long. Please choose a shorter one:
-# already_taken = That name is already in use. Please choose another one:
-# print_date = Great! Enter the date (format: DD.MM.YYYY or DD.MM):
-# 29th = February 29th is a special case{newline1}Please choose a different date like 01.03 or 28.02 and add a note that the actual birthday is on 29.02 using the /add_note command{newline2}Sorry for the inconvenience
-# invalid_date = That date is invalid. Please enter a valid date:
-# added = Birthday added successfully!
 async def add_birthday(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Ask for the person's name."""
     context.user_data.clear()
 
     await update.message.reply_text("Enter the person's name:")
@@ -38,6 +31,11 @@ async def add_birthday(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def add_name(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Check and store name, ask for a date.
+
+    Returns ADD_DATE if a date is to be added, otherwise calls post_birthday().
+
+    """
     name = update.message.text
     if len(name) > 255:
         await update.message.reply_text(
@@ -56,6 +54,12 @@ async def add_name(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def add_date(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Check and store date, ask for a note.
+
+    Year is optional.
+    Returns ADD_NOTE if a note is to be added, otherwise calls post_birthday().
+
+    """
     date_text = update.message.text
     ints_from_text = re.findall(r"\d+", date_text)
     day = int(ints_from_text[0])
@@ -90,17 +94,27 @@ async def add_date(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def skip_note(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Handle skiping adding a note, call post_birthday()."""
     context.user_data["skipped_note"] = True
     return await post_birthday(update, context)
 
 
 async def add_note(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Store note, call post_birthday()."""
     note = update.message.text
     context.user_data["note"] = note
     return await post_birthday(update, context)
 
 
 async def post_birthday(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Send a post request to the API with the data from context.user_data.
+
+    If the request fails due to a name conflict - return ADD_NAME to ask for a new name.
+    If the request fails due to an invalid date - return ADD_DATE to ask for a new date.
+    If success or unpredicted failure - notify and end conversation.
+
+    """
+
     data = {
         "name": context.user_data["name"],
         "day": context.user_data["day"],
@@ -161,21 +175,17 @@ async def post_birthday(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # print(f"Current state: {state_name.get(state, 'UNKNOWN')}")
 
 
-async def help(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.effective_message.reply_text(
-        """
-        Commands to use:
-        /list - your added birthdays
-        /add_birthday - adds a birthday to your list
-        """
-    )
-
-
 async def stop(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """End conversation."""
     return ConversationHandler.END
 
 
 def main() -> None:
+    """BirthdayBot main function.
+
+    Create and start polling an application with handlers for manipulating birthdays.
+
+    """
 
     application = ApplicationBuilder().token(BOT_TOKEN).build()
 
