@@ -1,11 +1,12 @@
 import requests
+import time
+import base64
+
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import padding
 from cryptography.hazmat.primitives import hashes
-import base64
-import time
 
-from config import BOT_TOKEN
+from core.config import BOT_TOKEN
 
 PUBLIC_KEY = None
 JWT_EXPIRES_SECONDS = 60 * 60
@@ -16,6 +17,7 @@ class UserSessionManager:
 
     Methods:
         get_session(user_id): Create or return existing UserSession object for the given user_id
+
     """
 
     def __init__(self):
