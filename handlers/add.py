@@ -1,4 +1,4 @@
-import re
+from re import findall
 
 from telegram import Update
 from telegram.ext import (
@@ -19,6 +19,7 @@ ADD_NAME, ADD_DATE, ADD_NOTE = range(3)
 
 
 birthdays_schema = BirthdaysSchema()
+
 
 async def add_birthday(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Ask for the person's name."""
@@ -60,7 +61,7 @@ async def add_date(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     """
     date_text = update.message.text
-    ints_from_text = re.findall(r"\d+", date_text)
+    ints_from_text = findall(r"\d+", date_text)
     day = int(ints_from_text[0])
     month = int(ints_from_text[1])
     year = int(ints_from_text[2]) if len(ints_from_text) > 2 else None
@@ -125,27 +126,31 @@ async def post_birthday(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if context.user_data.get("note") is not None:
         data["note"] = context.user_data["note"]
 
-    response = post_request(update.effective_user.id, data)
+    try:
+        response = post_request(update.effective_user.id, data)
 
-    if response.status_code == 422:
-        if response.json()["field"] == "name":
-            if "name" in context.user_data:
-                context.user_data.pop("name")
-            await update.message.reply_text(
-                "Name is already in use. Please choose another one:"
-            )
-            return ADD_NAME
-        elif response.json()["field"] == "date":
-            await update.message.reply_text(
-                "Date is invalid. Please enter a valid date (format: `DD.MM.YYYY` or `DD.MM`):"
-            )
-            context.user_data.pop("day")
-            context.user_data.pop("month")
-            if context.user_data.get("year"):
-                context.user_data.pop("year")
-            return ADD_DATE
-    elif response.status_code != 201:
-        await update.message.reply_text("Failed to add birthday. Please try again")
+        if response.status_code == 422:
+            if response.json()["field"] == "name":
+                if "name" in context.user_data:
+                    context.user_data.pop("name")
+                await update.message.reply_text(
+                    "Name is already in use. Please choose another one:"
+                )
+                return ADD_NAME
+            elif response.json()["field"] == "date":
+                await update.message.reply_text(
+                    "Date is invalid. Please enter a valid date (format: `DD.MM.YYYY` or `DD.MM`):"
+                )
+                context.user_data.pop("day")
+                context.user_data.pop("month")
+                if context.user_data.get("year"):
+                    context.user_data.pop("year")
+                return ADD_DATE
+        else:
+            response.raise_for_status()
+
+    except Exception as e:
+        await update.message.reply_text(f"{e}. Please try again")
         return ConversationHandler.END
 
     context.user_data.clear()

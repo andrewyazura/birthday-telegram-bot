@@ -2,13 +2,16 @@ import requests
 import time
 import base64
 
+from requests import RequestException
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import padding
 from cryptography.hazmat.primitives import hashes
 
 from core.config import BOT_TOKEN
 
-PUBLIC_KEY = None
+with open("core/key.pem", "rb") as key_file:
+    PUBLIC_KEY = serialization.load_pem_public_key(key_file.read())
+
 JWT_EXPIRES_SECONDS = 60 * 60
 
 
@@ -57,13 +60,16 @@ class UserSession(requests.Session):
 
     def login(self, encrypted_bot_id) -> bool:
         """Logs in session to the api with the given encrypted_bot_id"""
-        login_response = self.get(
-            "http://127.0.0.1:8080/login",
-            params={"encrypted_bot_id": encrypted_bot_id, "id": self.user_id},
-        )
-        if login_response.status_code != 200:
-            print(f"Failed to login to api. {login_response.status_code}")  # fix later
-            return False
+        try:
+            login_response = self.get(
+                "http://127.0.0.1:8080/login",
+                params={"encrypted_bot_id": encrypted_bot_id, "id": self.user_id},
+            )
+            login_response.raise_for_status()
+        except requests.exceptions.RequestException as e:
+            print(f"Failed to login to api. {e}")
+            raise RequestException("Failed to login to api")
+
         csrf_access_token = self.cookies["csrf_access_token"]
 
         self.headers.update({"X-CSRF-TOKEN": csrf_access_token})
@@ -85,10 +91,12 @@ session_manager = UserSessionManager()
 
 def _get_public_key():
     """Request public key from the api and return it as a cryptography object"""
-    response = requests.get("http://127.0.0.1:8080/public-key")
-
-    if response.status_code != 200:
-        print(f"Failed to get api key. code: {response.status_code}")  # fix later
+    try:
+        response = requests.get("http://127.0.0.1:8080/public-key")
+        response.raise_for_status()
+    except requests.exceptions.RequestException as e:
+        print(f"Failed to get public key. {e}")
+        raise RequestException(f"Failed to request public key")
 
     public_key_json = response.json()
     public_key = serialization.load_pem_public_key(
@@ -117,13 +125,12 @@ def _encrypt_bot_id(request_key=False):
 
 
 def post_request(id, data_json) -> requests.Response:
-    """Post request to the api with the given user id and data"""
+    """Post request to the api with the given user id and data
+
+    Doesn't handle exceptions, raises them to the caller.
+    """
     user_session = session_manager.get_session(id)
 
     post_response = user_session.post("http://127.0.0.1:8080/birthdays", json=data_json)
-    if post_response.status_code != 201:
-        print(f"Failed to add birthday. {post_response.json()}")  # fix later
-    else:
-        print(post_response.json())
 
     return post_response
