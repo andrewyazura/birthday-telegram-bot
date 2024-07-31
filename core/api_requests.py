@@ -1,5 +1,5 @@
 import requests
-import time
+from time import time
 import base64
 
 from requests import RequestException
@@ -9,9 +9,9 @@ from cryptography.hazmat.primitives import hashes
 
 from core.config import BOT_TOKEN
 
-with open("core/key.pem", "rb") as key_file:
-    PUBLIC_KEY = serialization.load_pem_public_key(key_file.read())
-
+# with open("core/key.pem", "rb") as key_file:
+#     PUBLIC_KEY = serialization.load_pem_public_key(key_file.read())
+PUBLIC_KEY = None
 JWT_EXPIRES_SECONDS = 60 * 60
 
 
@@ -50,13 +50,13 @@ class UserSession(requests.Session):
     def __init__(self, user_id):
         super().__init__()
         self.user_id = user_id
-        self.time_created = time.time()
+        self.time_created = time()
         self.login(_encrypt_bot_id())
         self.hooks["response"].append(self.pre_request_hook)
 
     def is_expired(self) -> bool:
         """Check if the session has expired"""
-        return time.time() - self.time_created > JWT_EXPIRES_SECONDS
+        return time() - self.time_created > JWT_EXPIRES_SECONDS
 
     def login(self, encrypted_bot_id) -> bool:
         """Logs in session to the api with the given encrypted_bot_id"""
@@ -67,7 +67,7 @@ class UserSession(requests.Session):
             )
             login_response.raise_for_status()
         except requests.exceptions.RequestException as e:
-            print(f"Failed to login to api. {e}")
+            print(f"Failed to login to api. {e}. {login_response.text}")
             raise RequestException("Failed to login to api")
 
         csrf_access_token = self.cookies["csrf_access_token"]
@@ -95,7 +95,7 @@ def _get_public_key():
         response = requests.get("http://127.0.0.1:8080/public-key")
         response.raise_for_status()
     except requests.exceptions.RequestException as e:
-        print(f"Failed to get public key. {e}")
+        print(f"Failed to get public key. {e}. {response.text}")
         raise RequestException(f"Failed to request public key")
 
     public_key_json = response.json()
@@ -124,13 +124,38 @@ def _encrypt_bot_id(request_key=False):
     return encrypted_data_base64
 
 
-def post_request(id, data_json) -> requests.Response:
+def post_request(user_id, data_json) -> requests.Response:
     """Post request to the api with the given user id and data
 
     Doesn't handle exceptions, raises them to the caller.
     """
-    user_session = session_manager.get_session(id)
+    user_session = session_manager.get_session(user_id)
 
     post_response = user_session.post("http://127.0.0.1:8080/birthdays", json=data_json)
 
     return post_response
+
+
+def get_request(user_id) -> requests.Response:
+    """Get request to the api with the given user id
+
+    Doesn't handle exceptions, raises them to the caller.
+    """
+    user_session = session_manager.get_session(user_id)
+
+    get_response = user_session.get("http://127.0.0:8080/birthdays")
+
+    return get_response
+
+
+def put_request(user_id, data_json) -> requests.Response:
+    """Put request to the api with the given user id and data
+
+    data_json should include id of birthday to be updated.
+    Doesn't handle exceptions, raises them to the caller.
+    """
+    user_session = session_manager.get_session(user_id)
+
+    put_response = user_session.put(f"http://127.0.0:8080/birthdays/{data_json["how id is called"]}", json=data_json)
+
+    return put_response
