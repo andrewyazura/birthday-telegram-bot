@@ -80,21 +80,21 @@ async def put_birthday(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 change_conv_handler = ConversationHandler(
-    entry_points=[CommandHandler("change_birthday", change_birthday)],
+    entry_points=[CommandHandler("change_birtday", change_birthday)],
     states={
         CHANGE_GET_BIRTHDAY: [
-            MessageHandler(filters.Text & ~filters.Command(), change_get_birthday)
+            MessageHandler(filters.TEXT & ~filters.COMMAND, change_get_birthday)
         ],
         CHANGE_NAME: [
-            MessageHandler(filters.Text & ~filters.Command(), change_name),
+            MessageHandler(filters.TEXT & ~filters.COMMAND, change_name),
             CommandHandler("skip", skip_name),
         ],
         CHANGE_DATE: [
-            MessageHandler(filters.Text & ~filters.Command(), change_date),
+            MessageHandler(filters.TEXT & ~filters.COMMAND, change_date),
             CommandHandler("skip", skip_date),
         ],
         CHANGE_NOTE: [
-            MessageHandler(filters.Text & ~filters.Command(), change_note),
+            MessageHandler(filters.TEXT & ~filters.COMMAND, change_note),
             CommandHandler("skip", skip_note),
         ],
     },
