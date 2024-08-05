@@ -69,9 +69,8 @@ async def add_date(update: Update, context: ContextTypes.DEFAULT_TYPE):
     date_json = {
         "day": day,
         "month": month,
+        "year": year,
     }
-    if year != None:
-        date_json["year"] = year
 
     try:
         birthdays_schema.valid_date(date_json)
@@ -81,10 +80,9 @@ async def add_date(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     context.user_data["day"] = date_json["day"]
     context.user_data["month"] = date_json["month"]
-    if "year" in date_json:
-        context.user_data["year"] = date_json["year"]
+    context.user_data["year"] = date_json["year"]
 
-    if "note" in context.user_data or "skipped_note" in context.user_data:
+    if "note" in context.user_data and context.user_data["note"] is not None:
         return await post_birthday(update, context)
 
     await update.message.reply_text(
@@ -95,7 +93,7 @@ async def add_date(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def skip_note(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handle skiping adding a note, call post_birthday()."""
-    context.user_data["skipped_note"] = True
+    context.user_data["note"] = None
     return await post_birthday(update, context)
 
 
@@ -109,7 +107,8 @@ async def add_note(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def post_birthday(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Send a post request to the API with the data from context.user_data.
 
-    Used as a part of add_conv_handler.
+    Used as a part of add_conv_handler. Handles the response from the API.
+    All values need to be present in context.user_data (at least equal to None).
     If the request fails due to a name conflict - return ADD_NAME to ask for a new name.
     If the request fails due to an invalid date - return ADD_DATE to ask for a new date.
     If success or unpredicted failure - notify and end conversation.
@@ -120,38 +119,42 @@ async def post_birthday(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "name": context.user_data["name"],
         "day": context.user_data["day"],
         "month": context.user_data["month"],
+        "year": context.user_data["year"],
+        "note": context.user_data["note"],
     }
-    if context.user_data.get("year"):
-        data["year"] = context.user_data["year"]
-    if context.user_data.get("note") is not None:
-        data["note"] = context.user_data["note"]
 
     try:
         response = post_request(update.effective_user.id, data)
-
-        if response.status_code == 422:
-            if response.json()["field"] == "name":
-                if "name" in context.user_data:
-                    context.user_data.pop("name")
-                await update.message.reply_text(
-                    "Name is already in use. Please choose another one:"
-                )
-                return ADD_NAME
-            elif response.json()["field"] == "date":
-                await update.message.reply_text(
-                    "Date is invalid. Please enter a valid date (format: `DD.MM.YYYY` or `DD.MM`):"
-                )
-                context.user_data.pop("day")
-                context.user_data.pop("month")
-                if context.user_data.get("year"):
-                    context.user_data.pop("year")
-                return ADD_DATE
-        else:
+        if response.status_code != 422:
             response.raise_for_status()
-
     except Exception as e:
         await update.message.reply_text(f"{e}. Please try again")
         return ConversationHandler.END
+
+    if response.status_code == 422:
+        if response.json()["field"] == "name":
+            if "name" in context.user_data:
+                context.user_data.pop("name")
+            await update.message.reply_text(
+                "Name is already in use. Please choose another one:"
+            )  # response.json()["message"]
+            return ADD_NAME
+        elif response.json()["field"] == "date":
+            if context.user_data.get("day"):
+                context.user_data.pop("day")
+                context.user_data.pop("month")
+                context.user_data.pop("year")
+
+            await update.message.reply_text(
+                "Date is invalid. Please enter a valid date (format: `DD.MM.YYYY` or `DD.MM`):"
+            )  # response.json()["message"]
+            return ADD_DATE
+        elif response.json()["field"] == "note":
+            context.user_data.pop("note")
+            await update.message.reply_text(
+                "Note is too long. Please choose a shorter one:"
+            )  # response.json()["message"]
+            return ADD_NOTE
 
     context.user_data.clear()
     await update.message.reply_text(
