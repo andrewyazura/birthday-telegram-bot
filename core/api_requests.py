@@ -143,19 +143,32 @@ def get_request(user_id) -> requests.Response:
     """
     user_session = session_manager.get_session(user_id)
 
-    get_response = user_session.get("http://127.0.0:8080/birthdays")
+    get_response = user_session.get("http://127.0.0.1:8080/birthdays")
 
     return get_response
 
 
-def put_request(user_id, data_json) -> requests.Response:
-    """Put request to the api with the given user id and data
+def get_by_id_request(user_id, birthday_id) -> requests.Response:
+    """Get request to the api with the given user id and birthday id
 
-    data_json should include id of birthday to be updated.
     Doesn't handle exceptions, raises them to the caller.
     """
     user_session = session_manager.get_session(user_id)
 
-    put_response = user_session.put(f"http://127.0.0:8080/birthdays/{data_json["how id is called"]}", json=data_json)
+    get_response = user_session.get(f"http://127.0.0.1:8080/birthdays/{birthday_id}")
+
+    return get_response
+
+
+def put_request(user_id, birthday_id, data_json) -> requests.Response:
+    """Put request to the api with the given user id and data
+
+    Doesn't handle exceptions, raises them to the caller.
+    """
+    user_session = session_manager.get_session(user_id)
+
+    put_response = user_session.put(
+        f"http://127.0.0.1:8080/birthdays/{birthday_id}", json=data_json
+    )
 
     return put_response
