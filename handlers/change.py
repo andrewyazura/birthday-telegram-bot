@@ -40,6 +40,8 @@ async def change_birthday(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("No birthdays found. /add_birthday to add one")
         return ConversationHandler.END
 
+    data = sorted(data, key=lambda x: x["name"])
+
     keyboard = []
     for birthday in data:
         keyboard.append(
