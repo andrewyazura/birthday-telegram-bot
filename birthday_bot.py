@@ -10,6 +10,7 @@ filterwarnings(
 from core.config import BOT_TOKEN
 from handlers.add import add_conv_handler
 from handlers.change import change_conv_handler
+from handlers.delete import delete_conv_handler
 
 
 def main() -> None:
@@ -23,6 +24,7 @@ def main() -> None:
 
     application.add_handler(add_conv_handler)
     application.add_handler(change_conv_handler)
+    application.add_handler(delete_conv_handler)
 
     application.run_polling(allowed_updates=Update.ALL_TYPES)
 

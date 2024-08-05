@@ -172,3 +172,17 @@ def put_request(user_id, birthday_id, data_json) -> requests.Response:
     )
 
     return put_response
+
+
+def delete_request(user_id, birthday_id) -> requests.Response:
+    """Delete request to the api with the given user id and birthday id
+
+    Doesn't handle exceptions, raises them to the caller.
+    """
+    user_session = session_manager.get_session(user_id)
+
+    delete_response = user_session.delete(
+        f"http://127.0.0.1:8080/birthdays/{birthday_id}"
+    )
+
+    return delete_response

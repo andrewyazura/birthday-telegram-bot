@@ -65,7 +65,8 @@ async def change_get_birthday(update: Update, context: ContextTypes.DEFAULT_TYPE
         response.raise_for_status()
         birthday_json = response.json()
     except Exception as e:
-        await update.message.reply_text(
+        # TODO: send to admin
+        await query.edit_message_text(
             f"{e}. Please try again. {traceback.format_exc()}"
         )
         return ConversationHandler.END
@@ -311,6 +312,7 @@ change_conv_handler = ConversationHandler(
         ],
     },
     fallbacks=[CommandHandler("stop", stop)],
+    allow_reentry=True,
 )
 
 # TODO: handle if nothing changed
