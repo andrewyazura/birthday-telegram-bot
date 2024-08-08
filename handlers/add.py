@@ -149,12 +149,9 @@ async def post_birthday(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 "Date is invalid. Please enter a valid date (format: `DD.MM.YYYY` or `DD.MM`):"
             )  # response.json()["message"]
             return ADD_DATE
-        elif response.json()["field"] == "note":
-            context.user_data.pop("note")
-            await update.message.reply_text(
-                "Note is too long. Please choose a shorter one:"
-            )  # response.json()["message"]
-            return ADD_NOTE
+        else:
+            await update.message.reply_text("Invalid data. Please try again")
+            return ConversationHandler.END
 
     context.user_data.clear()
     await update.message.reply_text(
