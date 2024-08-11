@@ -10,7 +10,7 @@ from telegram.ext import (
 )
 from marshmallow import ValidationError
 
-from core.api_requests import post_request
+from core.requests.api_requests import post_request
 from core.schema import BirthdaysSchema
 from handlers.fallback import stop
 
@@ -131,13 +131,14 @@ async def post_birthday(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(f"{e}. Please try again")
         return ConversationHandler.END
 
+    # TODO: print response.json()["message"] to user
     if response.status_code == 422:
         if response.json()["field"] == "name":
             if "name" in context.user_data:
                 context.user_data.pop("name")
             await update.message.reply_text(
                 "Name is already in use. Please choose another one:"
-            )  # response.json()["message"]
+            )
             return ADD_NAME
         elif response.json()["field"] == "date":
             if context.user_data.get("day"):
@@ -147,7 +148,7 @@ async def post_birthday(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
             await update.message.reply_text(
                 "Date is invalid. Please enter a valid date (format: `DD.MM.YYYY` or `DD.MM`):"
-            )  # response.json()["message"]
+            )
             return ADD_DATE
         else:
             await update.message.reply_text("Invalid data. Please try again")

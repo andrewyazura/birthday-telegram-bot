@@ -186,3 +186,16 @@ def delete_request(user_id, birthday_id) -> requests.Response:
     )
 
     return delete_response
+
+
+def incoming_birthdays_request() -> requests.Response:
+    """Get request to the api as admin to get incoming birthdays
+
+    Doesn't handle exceptions, raises them to the caller.
+    """
+
+    admin_session = 
+
+    response = admin_session.get("http://127:0.0.1:8080/birthdays/incoming")
+
+    return response

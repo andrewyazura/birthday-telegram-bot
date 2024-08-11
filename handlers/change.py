@@ -11,7 +11,7 @@ from telegram.ext import (
 )
 from marshmallow import ValidationError
 
-from core.api_requests import put_request, get_request, get_by_id_request
+from core.requests.api_requests import put_request, get_request, get_by_id_request
 from core.schema import BirthdaysSchema
 from handlers.fallback import stop
 
@@ -229,6 +229,7 @@ async def put_birthday(update: Update, context: ContextTypes.DEFAULT_TYPE):
         context.user_data.clear()
         return ConversationHandler.END
 
+    # TODO: print response.json()["message"] to user
     if response.status_code == 422:
         if response.json()["field"] == "name":
             if "new_name" in context.user_data:

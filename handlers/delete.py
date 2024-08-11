@@ -8,7 +8,7 @@ from telegram.ext import (
     CallbackQueryHandler,
 )
 
-from core.api_requests import delete_request, get_request
+from core.requests.api_requests import delete_request, get_request
 from core.schema import BirthdaysSchema
 from handlers.fallback import stop
 
