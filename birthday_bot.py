@@ -22,8 +22,10 @@ from handlers.list import list_birthdays
 def main() -> None:
     """BirthdayBot main function.
 
-    Create and start polling an application with handlers for manipulating birthdays.
-
+    Create and start polling an application with handlers for manipulating birthdays using
+    [birthday-api](https://github.com/orehzzz/birthday-api). 
+    
+    Send a daily reminder about the birthdays
     """
 
     application = ApplicationBuilder().token(BOT_TOKEN).build()
@@ -36,7 +38,7 @@ def main() -> None:
     job_queue = application.job_queue
     job_queue.run_daily(
         callback=reminder,
-        time=time(hour=11, minute=43, tzinfo=pytz.timezone("Europe/Kyiv")),
+        time=time(hour=10, tzinfo=pytz.timezone("Europe/Kyiv")),
     )
 
     application.run_polling(allowed_updates=Update.ALL_TYPES)

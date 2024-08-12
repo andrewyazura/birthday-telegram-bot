@@ -11,7 +11,7 @@ from telegram.ext import (
 )
 from marshmallow import ValidationError
 
-from core.requests.api_requests import put_request, get_request, get_by_id_request
+from core.api_requests import put_request, get_request, get_by_id_request
 from core.schema import BirthdaysSchema
 from handlers.fallback import stop
 
@@ -25,6 +25,7 @@ birthdays_schema = BirthdaysSchema()
 
 
 async def change_birthday(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Request all birthdays, give user a keyboard to choose which birthday to change."""
     context.user_data.clear()
 
     try:
@@ -56,7 +57,9 @@ async def change_birthday(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def change_get_birthday(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    # bad but okay - request selected birthday, add to context data
+    """Request choosen birthday, ask for new name or to keep the same one."""
+    # HACK: Not optimal to request the birthday again, fix later
+
     query = update.callback_query
     await query.answer()
 
@@ -73,7 +76,6 @@ async def change_get_birthday(update: Update, context: ContextTypes.DEFAULT_TYPE
         )
         return ConversationHandler.END
 
-    # add data to context
     context.user_data["birthday_id"] = birthday_json["id"]
     context.user_data["name"] = birthday_json["name"]
     context.user_data["day"] = birthday_json["day"]
@@ -88,7 +90,7 @@ async def change_get_birthday(update: Update, context: ContextTypes.DEFAULT_TYPE
 
 
 async def change_name(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    # get new name
+    """Check new name, ask for new date or to keep the same one."""
     new_name = update.message.text
 
     if len(new_name) > 255:
@@ -111,7 +113,7 @@ async def change_name(update: Update, context: ContextTypes.DEFAULT_TYPE):
     date = f"{context.user_data['day']}.{context.user_data['month']}"
     if context.user_data["year"]:
         date += f".{context.user_data['year']}"
-    # ask user for new date or skip
+
     await update.message.reply_text(
         f"Great! Enter the date (format: `DD.MM.YYYY` or `DD.MM`) or send /skip to keep the same date.\nCurrent date: {date}"
     )
@@ -119,6 +121,7 @@ async def change_name(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def skip_name(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Not changing name, ask for new date or to keep the same one."""
     if "new_day" in context.user_data:  # for some unexpected /skip
         return await put_birthday(update, context)
 
@@ -132,7 +135,7 @@ async def skip_name(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def change_date(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    # check new date
+    """Check new date, ask for new note or to keep the same one."""
     new_date_text = update.message.text
     ints_from_text = findall(r"\d+", new_date_text)
     day = int(ints_from_text[0])
@@ -170,6 +173,7 @@ async def change_date(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def skip_date(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Not changing date, ask for new note or to keep the same one."""
     if (
         "new_note" in context.user_data or context.user_data.get("skipped_note") == True
     ):  # for some unexpected /skip
@@ -185,6 +189,7 @@ async def skip_date(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def change_note(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Check new note, call `put_birthday()`."""
     new_note = update.message.text
 
     if len(new_note) > 255:
@@ -205,21 +210,38 @@ async def change_note(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def delete_note(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Delete previous note by setting new to None, call `put_birthday()`."""
     context.user_data["new_note"] = None
     return await put_birthday(update, context)
 
 
 async def skipped_note(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Not changing note, call `put_birthday()`."""
     context.user_data["skipped_note"] = True
     return await put_birthday(update, context)
 
 
 async def put_birthday(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    # collect all data
-    user_id = update.effective_user.id
+    """Send a put request to the API with the data from `context.user_data`.
+
+    Used as a part of `change_conv_handler`. Handles the response from the API.
+
+    All new (and old) values need to be present in `context.user_data`.
+    Old value will be overwritten if new is present.
+
+    If the request fails due to a name conflict - return `CHANGE_NAME` to ask for a name again.
+    If the request fails due to an invalid date - return `CHANGE_DATE` to ask for a date again.
+
+    If success or unpredicted failure - notify and end conversation.
+    """
+
+    if nothing_changed(context.user_data):
+        await update.message.reply_text("No changes made. Don't waste my time.")
+        return ConversationHandler.END
+
     data_json = _collect_data(context.user_data)
 
-    # hande response
+    user_id = update.effective_user.id
     try:
         response = put_request(user_id, context.user_data["birthday_id"], data_json)
         if response.status_code != 422:
@@ -264,7 +286,19 @@ async def put_birthday(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return ConversationHandler.END
 
 
+def nothing_changed(user_data) -> bool:
+    """Check if any new value is present in `user_data`."""
+    if "new_name" in user_data or "new_day" in user_data or "new_note" in user_data:
+        return False
+    return True
+
+
 def _collect_data(user_data) -> dict:
+    """Collects data from `user_data` and returns it in a dictionary ready to be sent to the API.
+
+    If new value is present, it will be used, otherwise the old one will be used.
+    `None` values for old/new `year` and `note` are axceptable.
+    """
     data = {}
 
     if "new_name" in user_data:

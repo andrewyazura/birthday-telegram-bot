@@ -3,10 +3,16 @@ import datetime
 
 from telegram.ext import ContextTypes
 
-from core.requests.api_requests import incoming_birthdays_request
+from core.api_requests import incoming_birthdays_request
 
 
 async def reminder(context: ContextTypes.DEFAULT_TYPE):
+    """Send reminders about incoming birthdays
+
+    A callback function for the `job_queue`.
+    Request the API for incoming birthdays and send a message to the user if
+      they are today, tomorrow or in a week.
+    """
     try:
         response = incoming_birthdays_request()
         if response.status_code == 404:

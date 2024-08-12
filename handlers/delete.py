@@ -8,7 +8,7 @@ from telegram.ext import (
     CallbackQueryHandler,
 )
 
-from core.requests.api_requests import delete_request, get_request
+from core.api_requests import delete_request, get_request
 from core.schema import BirthdaysSchema
 from handlers.fallback import stop
 
@@ -20,6 +20,7 @@ birthdays_schema = BirthdaysSchema()
 
 
 async def delete_birthday(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Get all birthdays and ask which one to delete."""
     context.user_data.clear()
 
     try:
@@ -53,6 +54,7 @@ async def delete_birthday(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def delete_handle_response(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Delete the chosen birthday or notify about failure."""
     query = update.callback_query
     await query.answer()
 

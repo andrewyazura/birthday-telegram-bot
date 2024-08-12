@@ -4,6 +4,10 @@ from telegram.ext import (
     ContextTypes,
 )
 
+
 async def stop(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """End conversation."""
+    """Stop current conversation
+
+    Use as a fallback in handlers
+    """
     return ConversationHandler.END

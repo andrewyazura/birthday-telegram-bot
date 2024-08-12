@@ -10,7 +10,7 @@ from telegram.ext import (
 )
 from marshmallow import ValidationError
 
-from core.requests.api_requests import post_request
+from core.api_requests import post_request
 from core.schema import BirthdaysSchema
 from handlers.fallback import stop
 
@@ -33,7 +33,7 @@ async def add_birthday(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def add_name(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Check and store name, ask for a date.
 
-    Returns ADD_DATE if a date is to be added, otherwise calls post_birthday().
+    Return `ADD_DATE` if a date is to be added, otherwise call `post_birthday()`.
 
     """
     name = update.message.text
@@ -57,7 +57,7 @@ async def add_date(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Check and store date, ask for a note.
 
     Year is optional.
-    Returns ADD_NOTE if a note is to be added, otherwise calls post_birthday().
+    Return `ADD_NOTE` if a note is to be added, otherwise call `post_birthday()`.
 
     """
     date_text = update.message.text
@@ -92,29 +92,31 @@ async def add_date(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def skip_note(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Handle skiping adding a note, call post_birthday()."""
+    """Handle skiping adding a note, call `post_birthday()`."""
     context.user_data["note"] = None
     return await post_birthday(update, context)
 
 
 async def add_note(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Store note, call post_birthday()."""
+    """Store note, call `post_birthday()`."""
     note = update.message.text
     context.user_data["note"] = note
     return await post_birthday(update, context)
 
 
 async def post_birthday(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Send a post request to the API with the data from context.user_data.
+    """Send a post request to the API with the data from `context.user_data`.
 
-    Used as a part of add_conv_handler. Handles the response from the API.
-    All values need to be present in context.user_data (at least equal to None).
-    If the request fails due to a name conflict - return ADD_NAME to ask for a new name.
-    If the request fails due to an invalid date - return ADD_DATE to ask for a new date.
+    Used as a part of `add_conv_handler`. Handles the response from the API.
+
+    All values need to be present in `context.user_data` (at least equal to `None`).
+
+    If the request fails due to a name conflict - return `ADD_NAME` to ask for another name.
+    If the request fails due to an invalid date - return `ADD_DATE` to ask for another date.
+
     If success or unpredicted failure - notify and end conversation.
 
     """
-
     data = {
         "name": context.user_data["name"],
         "day": context.user_data["day"],

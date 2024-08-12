@@ -3,6 +3,19 @@ from datetime import date
 
 
 class BirthdaysSchema(Schema):
+    """Schema for birthdays
+
+    Extends `Schema` from `marshmallow`. Used for validating the data of the birthdays.
+    Matches schema of the API.
+
+    Attributes:
+        name (fields.String): name of the birthday person
+        day (fields.Integer): day of the birthday
+        month (fields.Integer): month of the birthday
+        year (fields.Integer): year of the birthday, optional
+        note (fields.String): note for the birthday, optional
+    """
+
     name = fields.String(required=True, validate=validate.Length(max=255))
     day = fields.Integer(required=True)
     month = fields.Integer(required=True)
@@ -11,6 +24,19 @@ class BirthdaysSchema(Schema):
 
     @validates_schema
     def valid_date(self, data, **kwargs):
+        """Validates the date
+
+        Checks if the date is valid and if it's not in the future.
+
+        Args:
+            data (dict): data to be validated. Has to contain keys: `day`, `month`.
+              `year` is optional.
+            **kwargs: additional arguments
+
+        Raises:
+            ValidationError: if the date is invalid, in the future or 29th of February.
+        """
+
         try:
             year = data["year"]
             if year is None:

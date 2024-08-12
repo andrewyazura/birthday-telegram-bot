@@ -9,18 +9,19 @@ from cryptography.hazmat.primitives import hashes
 
 from core.config import BOT_TOKEN
 
-# with open("core/key.pem", "rb") as key_file:
-#     PUBLIC_KEY = serialization.load_pem_public_key(key_file.read())
+
 PUBLIC_KEY = None
 JWT_EXPIRES_SECONDS = 60 * 60
 
 
-# TODO: fix docs
 class SessionManager:
-    """Class to manage user sessions.
+    """Class to manage sessions
 
-    Methods:
-        get_session(user_id): Create or return existing CustomSession object for the given user_id
+    Should be used to get sessions by id. If the session doesn't exist or has expired,
+    a new session is created.
+
+    Attributes:
+        sessions (dict): Dictionary to store sessions with their ids as keys
 
     """
 
@@ -28,6 +29,9 @@ class SessionManager:
         self.sessions = {}
 
     def get_session(self, id):
+        """Get session by id.
+
+        Create a new session if it doesn't exist or has expired."""
         if id not in self.sessions or self.sessions[id].is_expired():
             if id == BOT_TOKEN:
                 self.sessions[id] = AdminSession()
@@ -38,16 +42,15 @@ class SessionManager:
 
 
 class CustomSession(requests.Session):
-    """Extend requests.Session class with custom properties and methods.
+    """Extend `requests.Session` class with custom properties and methods.
+
+    Args:
+        id: id of the session. Should be user's id or bot's token
 
     Attributes:
         id: id of the session
         time_created: Time when the session was created
-
-    Methods:
-        is_expired: Check if the session has expired
-        login(encrypted_bot_id): Log in to the api with the given encrypted_bot_id
-        pre_request_hook(response, *args, **kwargs): Function to check before each request if the session has expired and relogin if needed.
+        hooks: List of hooks to be executed before or after the request
     """
 
     def __init__(self, id):
@@ -62,7 +65,17 @@ class CustomSession(requests.Session):
         return time() - self.time_created > JWT_EXPIRES_SECONDS
 
     def login(self, encrypted_bot_id) -> bool:
-        """Logs in session to the api with the given encrypted_bot_id"""
+        """Login to the api with the given `encrypted_bot_id`.
+
+        Args:
+            encrypted_bot_id (str): Bot's id encrypted with the `PUBLIC_KEY`
+
+        Raises:
+            RequestException: Raised if request to the api failed
+
+        Returns:
+            bool: True if login was successful
+        """
         try:
             login_response = self.get(
                 "http://127.0.0.1:8080/login",
@@ -90,7 +103,16 @@ class CustomSession(requests.Session):
             self.login(self._encrypt_bot_id())
 
     def _get_public_key(self):
-        """Request public key from the api and return it as a cryptography object"""
+        """Request public key from the api and return it as a cryptography object
+
+        Raises:
+            RequestException: Raised if the request to the api failed
+
+        Returns:
+            cryptography.hazmat.primitives.asymmetric.rsa.RSAPublicKey:
+            Public key as a cryptography object
+
+        """
         try:
             response = requests.get("http://127.0.0.1:8080/public-key")
             response.raise_for_status()
@@ -107,7 +129,19 @@ class CustomSession(requests.Session):
         return public_key
 
     def _encrypt_bot_id(self, request_key=False):
-        """Encrypt bot token with the public key and return it as a base64 string"""
+        """Encrypt bot token with the public key and return it as a base64 string
+
+        Args:
+            request_key (bool): If True, requests the public key from the api. Else,
+              tries to use the cached key.
+
+        Raises:
+            RequestException: Raised if the public key request to the api failed
+
+        Returns:
+            str: Encrypted bot token as a base64 string
+
+        """
         global PUBLIC_KEY
 
         if PUBLIC_KEY is None or request_key:
@@ -126,11 +160,23 @@ class CustomSession(requests.Session):
 
 
 class AdminSession(CustomSession):
+    """Extend `CustomSession` class with admin specific properties and methods"""
+
     def __init__(self):
         super().__init__(BOT_TOKEN)
 
     def login(self, encrypted_bot_id) -> bool:
-        """Logs in session to the api as admin with the given encrypted_bot_id"""
+        """Logs in session to the api as admin with the given `encrypted_bot_id`
+
+        Args:
+            encrypted_bot_id (str): Bot id encrypted with the public key
+
+        Raises:
+            RequestException: Raised if the request to the api failed
+
+        Returns:
+            bool: True if the login was successful
+        """
         try:
             login_response = self.get(
                 "http://127.0.0.1:8080/admin/login",
@@ -142,8 +188,8 @@ class AdminSession(CustomSession):
             raise RequestException("Failed to login to api")
 
         csrf_access_token = self.cookies["csrf_access_token"]
-
         self.headers.update({"X-CSRF-TOKEN": csrf_access_token})
+
         return True
 
 
@@ -154,6 +200,14 @@ def post_request(user_id, data_json) -> requests.Response:
     """Post request to the api with the given user id and data
 
     Doesn't handle exceptions, raises them to the caller.
+
+    Args:
+        user_id (str): id of the user
+        data_json (dict): data to be posted
+
+    Returns:
+        requests.Response: Response object of the post request
+
     """
     user_session = session_manager.get_session(user_id)
 
@@ -166,6 +220,12 @@ def get_request(user_id) -> requests.Response:
     """Get request to the api with the given user id
 
     Doesn't handle exceptions, raises them to the caller.
+
+    Args:
+        user_id (str): id of the user
+
+    Returns:
+        requests.Response: Response object of the get request
     """
     user_session = session_manager.get_session(user_id)
 
@@ -178,6 +238,13 @@ def get_by_id_request(user_id, birthday_id) -> requests.Response:
     """Get request to the api with the given user id and birthday id
 
     Doesn't handle exceptions, raises them to the caller.
+
+    Args:
+        user_id (str): id of the user
+        birthday_id (str): id of the birthday
+
+    Returns:
+        requests.Response: Response object of the get request
     """
     user_session = session_manager.get_session(user_id)
 
@@ -190,6 +257,14 @@ def put_request(user_id, birthday_id, data_json) -> requests.Response:
     """Put request to the api with the given user id and data
 
     Doesn't handle exceptions, raises them to the caller.
+
+    Args:
+        user_id (str): id of the user
+        birthday_id (str): id of the birthday
+        data_json (dict): data to be put
+
+    Returns:
+        requests.Response: Response object of the put request
     """
     user_session = session_manager.get_session(user_id)
 
@@ -204,6 +279,13 @@ def delete_request(user_id, birthday_id) -> requests.Response:
     """Delete request to the api with the given user id and birthday id
 
     Doesn't handle exceptions, raises them to the caller.
+
+    Args:
+        user_id (str): id of the user
+        birthday_id (str): id of the birthday
+
+    Returns:
+        requests.Response: Response object of the delete request
     """
     user_session = session_manager.get_session(user_id)
 
@@ -218,6 +300,9 @@ def incoming_birthdays_request() -> requests.Response:
     """Get request to the api as admin to get incoming birthdays
 
     Doesn't handle exceptions, raises them to the caller.
+
+    Returns:
+        requests.Response: Response object of the get request
     """
 
     admin_session = session_manager.get_session(BOT_TOKEN)

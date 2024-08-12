@@ -6,10 +6,11 @@ from telegram.ext import (
     ContextTypes,
 )
 
-from core.requests.api_requests import get_request
+from core.api_requests import get_request
 
 
 async def list_birthdays(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Send a list of birthdays to the user"""
     context.user_data.clear()
 
     try:
