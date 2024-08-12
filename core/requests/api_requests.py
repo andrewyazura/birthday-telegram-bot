@@ -15,43 +15,46 @@ PUBLIC_KEY = None
 JWT_EXPIRES_SECONDS = 60 * 60
 
 
-class UserSessionManager:
+# TODO: fix docs
+class SessionManager:
     """Class to manage user sessions.
 
     Methods:
-        get_session(user_id): Create or return existing UserSession object for the given user_id
+        get_session(user_id): Create or return existing CustomSession object for the given user_id
 
     """
 
     def __init__(self):
         self.sessions = {}
 
-    def get_session(self, user_id):
-        if user_id not in self.sessions or self.sessions[user_id].is_expired():
-            self.sessions[user_id] = UserSession(user_id)
+    def get_session(self, id):
+        if id not in self.sessions or self.sessions[id].is_expired():
+            if id == BOT_TOKEN:
+                self.sessions[id] = AdminSession()
+            else:
+                self.sessions[id] = CustomSession(id)
 
-        return self.sessions[user_id]
+        return self.sessions[id]
 
 
-class UserSession(requests.Session):
+class CustomSession(requests.Session):
     """Extend requests.Session class with custom properties and methods.
 
     Attributes:
-        user_id: User id of the session
+        id: id of the session
         time_created: Time when the session was created
 
     Methods:
-        is_expired(): Check if the session has expired
+        is_expired: Check if the session has expired
         login(encrypted_bot_id): Log in to the api with the given encrypted_bot_id
-        pre_request_hook(response, *args, **kwargs): Function to be executed before each request.
-            Check if the session has expired and relogin if needed.
+        pre_request_hook(response, *args, **kwargs): Function to check before each request if the session has expired and relogin if needed.
     """
 
-    def __init__(self, user_id):
+    def __init__(self, id):
         super().__init__()
-        self.user_id = user_id
+        self.id = id
         self.time_created = time()
-        self.login(_encrypt_bot_id())
+        self.login(self._encrypt_bot_id())
         self.hooks["response"].append(self.pre_request_hook)
 
     def is_expired(self) -> bool:
@@ -63,7 +66,7 @@ class UserSession(requests.Session):
         try:
             login_response = self.get(
                 "http://127.0.0.1:8080/login",
-                params={"encrypted_bot_id": encrypted_bot_id, "id": self.user_id},
+                params={"encrypted_bot_id": encrypted_bot_id, "id": self.id},
             )
             login_response.raise_for_status()
         except requests.exceptions.RequestException as e:
@@ -75,6 +78,7 @@ class UserSession(requests.Session):
         self.headers.update({"X-CSRF-TOKEN": csrf_access_token})
         return True
 
+    # do i need response?
     def pre_request_hook(self, response, *args, **kwargs):
         """Function to be executed before each request.
 
@@ -83,45 +87,67 @@ class UserSession(requests.Session):
         """
 
         if self.is_expired():
-            self.login(_encrypt_bot_id())
+            self.login(self._encrypt_bot_id())
+
+    def _get_public_key(self):
+        """Request public key from the api and return it as a cryptography object"""
+        try:
+            response = requests.get("http://127.0.0.1:8080/public-key")
+            response.raise_for_status()
+        except requests.exceptions.RequestException as e:
+            print(
+                f"Failed to get public key. {e}"
+            )  # TODO: accessing the response.text in except will raise an error if the request failed
+            raise RequestException(f"Failed to request public key")
+
+        public_key_json = response.json()
+        public_key = serialization.load_pem_public_key(
+            public_key_json["public_key"].encode("utf-8")
+        )
+        return public_key
+
+    def _encrypt_bot_id(self, request_key=False):
+        """Encrypt bot token with the public key and return it as a base64 string"""
+        global PUBLIC_KEY
+
+        if PUBLIC_KEY is None or request_key:
+            PUBLIC_KEY = self._get_public_key()
+
+        encrypted_data = PUBLIC_KEY.encrypt(
+            BOT_TOKEN.encode("utf-8"),
+            padding.OAEP(
+                mgf=padding.MGF1(algorithm=hashes.SHA256()),
+                algorithm=hashes.SHA256(),
+                label=None,
+            ),
+        )
+        encrypted_data_base64 = base64.b64encode(encrypted_data).decode("utf-8")
+        return encrypted_data_base64
 
 
-session_manager = UserSessionManager()
+class AdminSession(CustomSession):
+    def __init__(self):
+        super().__init__(BOT_TOKEN)
+
+    def login(self, encrypted_bot_id) -> bool:
+        """Logs in session to the api as admin with the given encrypted_bot_id"""
+        try:
+            login_response = self.get(
+                "http://127.0.0.1:8080/admin/login",
+                params={"encrypted_bot_id": encrypted_bot_id},
+            )
+            login_response.raise_for_status()
+        except requests.exceptions.RequestException as e:
+            print(f"Failed to login to api. {e}. {login_response.text}")
+            raise RequestException("Failed to login to api")
+
+        csrf_access_token = self.cookies["csrf_access_token"]
+
+        self.headers.update({"X-CSRF-TOKEN": csrf_access_token})
+        return True
 
 
-def _get_public_key():
-    """Request public key from the api and return it as a cryptography object"""
-    try:
-        response = requests.get("http://127.0.0.1:8080/public-key")
-        response.raise_for_status()
-    except requests.exceptions.RequestException as e:
-        print(f"Failed to get public key. {e}. {response.text}")
-        raise RequestException(f"Failed to request public key")
-
-    public_key_json = response.json()
-    public_key = serialization.load_pem_public_key(
-        public_key_json["public_key"].encode("utf-8")
-    )
-    return public_key
-
-
-def _encrypt_bot_id(request_key=False):
-    """Encrypt bot token with the public key and return it as a base64 string"""
-    global PUBLIC_KEY
-
-    if PUBLIC_KEY is None or request_key:
-        PUBLIC_KEY = _get_public_key()
-
-    encrypted_data = PUBLIC_KEY.encrypt(
-        BOT_TOKEN.encode("utf-8"),
-        padding.OAEP(
-            mgf=padding.MGF1(algorithm=hashes.SHA256()),
-            algorithm=hashes.SHA256(),
-            label=None,
-        ),
-    )
-    encrypted_data_base64 = base64.b64encode(encrypted_data).decode("utf-8")
-    return encrypted_data_base64
+session_manager = SessionManager()
 
 
 def post_request(user_id, data_json) -> requests.Response:
@@ -194,8 +220,8 @@ def incoming_birthdays_request() -> requests.Response:
     Doesn't handle exceptions, raises them to the caller.
     """
 
-    admin_session = 
+    admin_session = session_manager.get_session(BOT_TOKEN)
 
-    response = admin_session.get("http://127:0.0.1:8080/birthdays/incoming")
+    response = admin_session.get("http://127.0.0.1:8080/admin/birthdays/incoming")
 
     return response
