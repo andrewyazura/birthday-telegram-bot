@@ -107,7 +107,7 @@ async def change_name(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     context.user_data["new_name"] = new_name
 
-    if "new_day" in context.user_data:
+    if "new_day" in context.user_data or context.user_data.get("skipped_date") == True:
         return await put_birthday(update, context)
 
     date = f"{context.user_data['day']}.{context.user_data['month']}"
@@ -122,7 +122,9 @@ async def change_name(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def skip_name(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Not changing name, ask for new date or to keep the same one."""
-    if "new_day" in context.user_data:  # for some unexpected /skip
+    if (
+        "new_day" in context.user_data or context.user_data.get("skipped_date") == True
+    ):  # for some unexpected /skip
         return await put_birthday(update, context)
 
     date = f"{context.user_data['day']}.{context.user_data['month']}"
@@ -178,6 +180,8 @@ async def skip_date(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "new_note" in context.user_data or context.user_data.get("skipped_note") == True
     ):  # for some unexpected /skip
         return await put_birthday(update, context)
+
+    context.user_data["skipped_date"] = True
 
     current_note_str = ""
     if "note" in context.user_data and context.user_data["note"] is not None:
@@ -255,7 +259,7 @@ async def put_birthday(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if response.status_code == 422:
         if response.json()["field"] == "name":
             if "new_name" in context.user_data:
-                context.user_data.pop("name")
+                context.user_data.pop("new_name")
 
             await update.message.reply_text(
                 "Name is already in use. Please choose another one:"
