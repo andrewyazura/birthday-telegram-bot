@@ -1,5 +1,6 @@
 from calendar import month_name
 from datetime import datetime
+import logging
 
 from telegram import Update
 from telegram.ext import (
@@ -7,11 +8,13 @@ from telegram.ext import (
 )
 
 from core.api_requests import get_request
+import core.logger
 
 
 async def list_birthdays(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Send a list of birthdays to the user"""
     context.user_data.clear()
+    logging.info(f"Sending a list of birthdays to user {update.effective_user.id}")
 
     try:
         response = get_request(update.effective_user.id)
@@ -24,7 +27,10 @@ async def list_birthdays(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
             return
     except Exception as e:
-        await update.message.reply_text(f"{e}. Please try again")
+        logging.error(
+            f"Failed to retrieve birthdays for user {update.effective_user.id}: {e}"
+        )
+        await update.message.reply_text("Failed. Please try again")
         return
 
     data = sorted(data, key=lambda x: (x["month"], x["day"]))
@@ -65,6 +71,7 @@ async def list_birthdays(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not inserted_today_panel:
         list_of_birthdays += f"{border}• {today_str} --- today\n{border}"
 
+    logging.info(f"Sent list of birthdays to user {update.effective_user.id}")
     await update.message.reply_text(list_of_birthdays, parse_mode="Markdown")
 
 

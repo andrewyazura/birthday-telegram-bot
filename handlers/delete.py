@@ -1,3 +1,4 @@
+import logging
 import traceback
 
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
@@ -21,6 +22,8 @@ birthdays_schema = BirthdaysSchema()
 
 async def delete_birthday(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Get all birthdays and ask which one to delete."""
+    logging.info(f"User {update.effective_user.id} is deleting a birthday")
+
     context.user_data.clear()
 
     try:
@@ -28,17 +31,24 @@ async def delete_birthday(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if response.status_code != 404:
             response.raise_for_status()
             data = response.json()
+        logging.info(
+            f"Retrieved {len(data)} birthdays for user {update.effective_user.id}"
+        )
     except Exception as e:
-        # TODO: log error
+        logging.error(
+            f"Failed to retrieve birthdays for user {update.effective_user.id}: {e}"
+        )
         # TODO: notify admin
-        await update.message.reply_text(f"{e}. Please try again")
+        await update.message.reply_text(f"Failed. Please try again")
         return ConversationHandler.END
 
     if response.status_code == 404:
+        logging.warning(f"No birthdays found for user {update.effective_user.id}")
         await update.message.reply_text("No birthdays found. /add_birthday to add one")
         return ConversationHandler.END
 
     data = sorted(data, key=lambda x: x["name"])
+    logging.debug(f"Birthday data sorted by name for user {update.effective_user.id}")
 
     keyboard = []
     for birthday in data:
@@ -63,10 +73,14 @@ async def delete_handle_response(update: Update, context: ContextTypes.DEFAULT_T
     try:
         response = delete_request(update.effective_user.id, birthday_id)
         response.raise_for_status()
-    except Exception as e:
-        await query.edit_message_text(
-            f"{e}. Please try again. {traceback.format_exc()}"
+        logging.info(
+            f"Successfully deleted birthday with id {birthday_id} for user {update.effective_user.id}"
         )
+    except Exception as e:
+        logging.error(
+            f"Failed to delete birthday with id {birthday_id} for user {update.effective_user.id}: {e}"
+        )
+        await query.edit_message_text("Failed. Please try again}")
         return ConversationHandler.END
 
     await query.edit_message_text(

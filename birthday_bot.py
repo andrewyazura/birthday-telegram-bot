@@ -23,8 +23,8 @@ def main() -> None:
     """BirthdayBot main function.
 
     Create and start polling an application with handlers for manipulating birthdays using
-    [birthday-api](https://github.com/orehzzz/birthday-api). 
-    
+    [birthday-api](https://github.com/orehzzz/birthday-api).
+
     Send a daily reminder about the birthdays
     """
 

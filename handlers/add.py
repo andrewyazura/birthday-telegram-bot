@@ -1,4 +1,5 @@
 from re import findall
+import logging
 
 from telegram import Update
 from telegram.ext import (
@@ -10,6 +11,7 @@ from telegram.ext import (
 )
 from marshmallow import ValidationError
 
+import core.logger
 from core.api_requests import post_request
 from core.schema import BirthdaysSchema
 from handlers.fallback import stop
@@ -23,6 +25,8 @@ birthdays_schema = BirthdaysSchema()
 
 async def add_birthday(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Ask for the person's name."""
+    logging.info(f"User {update.effective_user.id} is adding a birthday")
+
     context.user_data.clear()
 
     await update.message.reply_text("Enter the person's name:")
@@ -41,10 +45,15 @@ async def add_name(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(
             "That name is too long. Please choose a shorter one:"
         )
+        logging.warning(
+            f"User {update.effective_user.id} entered a name that is too long: {name}"
+        )
         print("returning ADD_NAME")
         return ADD_NAME
 
     context.user_data["name"] = name
+    logging.info(f"User {update.effective_user.id} entered name: {name}")
+
     if context.user_data.get("day"):
         return await post_birthday(update, context)
     await update.message.reply_text(
@@ -61,26 +70,29 @@ async def add_date(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     """
     date_text = update.message.text
-    ints_from_text = findall(r"\d+", date_text)
-    day = int(ints_from_text[0])
-    month = int(ints_from_text[1])
-    year = int(ints_from_text[2]) if len(ints_from_text) > 2 else None
-
-    date_json = {
-        "day": day,
-        "month": month,
-        "year": year,
-    }
+    logging.info(f"User {update.effective_user.id} provided date: {date_text}")
 
     try:
-        birthdays_schema.valid_date(date_json)
-    except ValidationError as e:
-        await update.message.reply_text("\n".join(e.messages))
-        return ADD_DATE
+        ints_from_text = findall(r"\d+", date_text)
+        day = int(ints_from_text[0])
+        month = int(ints_from_text[1])
+        year = int(ints_from_text[2]) if len(ints_from_text) > 2 else None
 
-    context.user_data["day"] = date_json["day"]
-    context.user_data["month"] = date_json["month"]
-    context.user_data["year"] = date_json["year"]
+        date_json = {"day": day, "month": month, "year": year}
+        birthdays_schema.valid_date(date_json)
+
+        context.user_data["day"] = date_json["day"]
+        context.user_data["month"] = date_json["month"]
+        context.user_data["year"] = date_json["year"]
+
+    except (ValueError, IndexError, ValidationError) as e:
+        logging.warning(f"Validation error for date: {date_text}. Error: {e}")
+        await update.message.reply_text(
+            "\n".join(e.messages)
+            if isinstance(e, ValidationError)
+            else "Invalid date format, please try again"
+        )
+        return ADD_DATE
 
     if "note" in context.user_data and context.user_data["note"] is not None:
         return await post_birthday(update, context)
@@ -93,6 +105,7 @@ async def add_date(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def skip_note(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handle skiping adding a note, call `post_birthday()`."""
+    logging.info(f"User {update.effective_user.id} skipped adding a note")
     context.user_data["note"] = None
     return await post_birthday(update, context)
 
@@ -100,6 +113,7 @@ async def skip_note(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def add_note(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Store note, call `post_birthday()`."""
     note = update.message.text
+    logging.info(f"User {update.effective_user.id} added a note: {note}")
     context.user_data["note"] = note
     return await post_birthday(update, context)
 
@@ -130,33 +144,31 @@ async def post_birthday(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if response.status_code != 422:
             response.raise_for_status()
     except Exception as e:
-        await update.message.reply_text(f"{e}. Please try again")
+        logging.error(f"Error posting birthday data for user {update.effective_user.id}: {str(e)}")
+        await update.message.reply_text("Failed. Please try again")
         return ConversationHandler.END
 
     # TODO: print response.json()["message"] to user
     if response.status_code == 422:
-        if response.json()["field"] == "name":
-            if "name" in context.user_data:
-                context.user_data.pop("name")
-            await update.message.reply_text(
-                "Name is already in use. Please choose another one:"
-            )
-            return ADD_NAME
-        elif response.json()["field"] == "date":
-            if context.user_data.get("day"):
-                context.user_data.pop("day")
-                context.user_data.pop("month")
-                context.user_data.pop("year")
+        error_field = response.json().get("field")
+        logging.warning(f"Validation error from API for user {update.effective_user.id}: {response.json()}")
 
-            await update.message.reply_text(
-                "Date is invalid. Please enter a valid date (format: `DD.MM.YYYY` or `DD.MM`):"
-            )
+        if error_field == "name":
+            context.user_data.pop("name", None)
+            await update.message.reply_text("Name is already in use. Please choose another one:")
+            return ADD_NAME
+        elif error_field == "date":
+            context.user_data.pop("day", None)
+            context.user_data.pop("month", None)
+            context.user_data.pop("year", None)
+            await update.message.reply_text("Date is invalid. Please enter a valid date (format: `DD.MM.YYYY` or `DD.MM`):")
             return ADD_DATE
         else:
             await update.message.reply_text("Invalid data. Please try again")
             return ConversationHandler.END
 
     context.user_data.clear()
+    logging.info(f"Birthday added successfully for user {update.effective_user.id}")
     await update.message.reply_text(
         "Birthday added successfully! /list to see all birthdays"
     )

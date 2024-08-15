@@ -1,3 +1,4 @@
+import logging
 from re import findall
 
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
@@ -20,12 +21,13 @@ import traceback
 
 CHANGE_GET_BIRTHDAY, CHANGE_NAME, CHANGE_DATE, CHANGE_NOTE = range(4)
 
-
 birthdays_schema = BirthdaysSchema()
 
 
 async def change_birthday(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Request all birthdays, give user a keyboard to choose which birthday to change."""
+    logging.info(f"User {update.effective_user.id} is changing a birthday")
+
     context.user_data.clear()
 
     try:
@@ -33,11 +35,18 @@ async def change_birthday(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if response.status_code != 404:
             response.raise_for_status()
             data = response.json()
+        logging.info(
+            f"Retrieved {len(data)} birthdays for user {update.effective_user.id}"
+        )
     except Exception as e:
-        await update.message.reply_text(f"{e}. Please try again")
+        logging.error(
+            f"Failed to retrieve birthdays for user {update.effective_user.id}: {e}"
+        )
+        await update.message.reply_text("Failed. Please try again")
         return ConversationHandler.END
 
     if response.status_code == 404:
+        logging.warning(f"No birthdays found for user {update.effective_user.id}")
         await update.message.reply_text("No birthdays found. /add_birthday to add one")
         return ConversationHandler.END
 
@@ -57,22 +66,26 @@ async def change_birthday(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def change_get_birthday(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Request choosen birthday, ask for new name or to keep the same one."""
+    """Request chosen birthday, ask for new name or to keep the same one."""
     # HACK: Not optimal to request the birthday again, fix later
 
     query = update.callback_query
     await query.answer()
 
     birthday_id = query.data
+    logging.info(f"User {update.effective_user.id} selected birthday ID: {birthday_id}")
 
     try:
         response = get_by_id_request(update.effective_user.id, birthday_id)
         response.raise_for_status()
         birthday_json = response.json()
+        logging.info(f"Retrieved birthday data for ID {birthday_id}: {birthday_json}")
     except Exception as e:
-        # TODO: send to admin
+        logging.error(
+            f"Failed to retrieve birthday ID {birthday_id} for user {update.effective_user.id}: {e}"
+        )
         await query.edit_message_text(
-            f"{e}. Please try again. {traceback.format_exc()}"
+            "Failed. Please try again. {traceback.format_exc()}"
         )
         return ConversationHandler.END
 
@@ -83,6 +96,10 @@ async def change_get_birthday(update: Update, context: ContextTypes.DEFAULT_TYPE
     context.user_data["year"] = birthday_json["year"]
     context.user_data["note"] = birthday_json["note"]
 
+    logging.info(
+        f"User {update.effective_user.id} will now edit birthday: {birthday_json['name']}"
+    )
+
     await query.edit_message_text(
         text=f'Changing birthday of: {birthday_json["name"]}\nInput a new name or send /skip to keep the same name'
     )
@@ -92,14 +109,20 @@ async def change_get_birthday(update: Update, context: ContextTypes.DEFAULT_TYPE
 async def change_name(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Check new name, ask for new date or to keep the same one."""
     new_name = update.message.text
+    logging.info(f"User {update.effective_user.id} entered new name: {new_name}")
 
     if len(new_name) > 255:
+        logging.warning(
+            f"User {update.effective_user.id} entered a name that is too long: {new_name}"
+        )
         await update.message.reply_text(
             "That name is too long. Please choose a shorter one or send /skip to keep the same name:"
         )
-        print("returning ADD_NAME")
         return CHANGE_NAME
     if new_name == context.user_data["name"]:
+        logging.warning(
+            f"User {update.effective_user.id} entered the same name: {new_name}"
+        )
         await update.message.reply_text(
             "This name is the same. Input a new name or send /skip to keep the same name:"
         )
@@ -107,7 +130,7 @@ async def change_name(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     context.user_data["new_name"] = new_name
 
-    if "new_day" in context.user_data or context.user_data.get("skipped_date") == True:
+    if "new_day" in context.user_data or context.user_data.get("skipped_date"):
         return await put_birthday(update, context)
 
     date = f"{context.user_data['day']}.{context.user_data['month']}"
@@ -122,9 +145,9 @@ async def change_name(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def skip_name(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Not changing name, ask for new date or to keep the same one."""
-    if (
-        "new_day" in context.user_data or context.user_data.get("skipped_date") == True
-    ):  # for some unexpected /skip
+    logging.info(f"User {update.effective_user.id} chose to skip changing the name")
+
+    if "new_day" in context.user_data or context.user_data.get("skipped_date"):
         return await put_birthday(update, context)
 
     date = f"{context.user_data['day']}.{context.user_data['month']}"
@@ -139,34 +162,38 @@ async def skip_name(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def change_date(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Check new date, ask for new note or to keep the same one."""
     new_date_text = update.message.text
-    ints_from_text = findall(r"\d+", new_date_text)
-    day = int(ints_from_text[0])
-    month = int(ints_from_text[1])
-    year = int(ints_from_text[2]) if len(ints_from_text) > 2 else None
-    date_json = {
-        "day": day,
-        "month": month,
-        "year": year,
-    }
 
     try:
+        ints_from_text = findall(r"\d+", new_date_text)
+        day = int(ints_from_text[0])
+        month = int(ints_from_text[1])
+        year = int(ints_from_text[2]) if len(ints_from_text) > 2 else None
+
+        date_json = {"day": day, "month": month, "year": year}
         birthdays_schema.valid_date(date_json)
-    except ValidationError as e:
-        error_messages = "\n".join(e.messages)
+
+        context.user_data["day"] = date_json["day"]
+        context.user_data["month"] = date_json["month"]
+        context.user_data["year"] = date_json["year"]
+
+        logging.info(
+            f"Validated new date for user {update.effective_user.id}: {date_json}"
+        )
+
+    except (ValueError, IndexError, ValidationError) as e:
+        logging.warning(f"Validation error for date: {new_date_text}. Error: {e}")
         await update.message.reply_text(
-            f"{error_messages}. Try again or send /skip to keep the same date:"
+            "\n".join(e.messages)
+            if isinstance(e, ValidationError)
+            else "Invalid date format, please try again:"
         )
         return CHANGE_DATE
 
-    context.user_data["new_day"] = date_json["day"]
-    context.user_data["new_month"] = date_json["month"]
-    context.user_data["new_year"] = date_json["year"]
-
-    if "new_note" in context.user_data or context.user_data.get("skipped_note") == True:
+    if "new_note" in context.user_data or context.user_data.get("skipped_note"):
         return await put_birthday(update, context)
 
     current_note_str = ""
-    if "note" in context.user_data and context.user_data["note"] is not None:
+    if context.user_data.get("note"):
         current_note_str = f"\nCurrent note: {context.user_data['note']}. Send /delete_note to delete it:\n"
     await update.message.reply_text(
         f"Nice. Enter a new note or send /skip to keep the same note. {current_note_str}"
@@ -176,15 +203,15 @@ async def change_date(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def skip_date(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Not changing date, ask for new note or to keep the same one."""
-    if (
-        "new_note" in context.user_data or context.user_data.get("skipped_note") == True
-    ):  # for some unexpected /skip
+    logging.info(f"User {update.effective_user.id} chose to skip changing the date")
+
+    if "new_note" in context.user_data or context.user_data.get("skipped_note"):
         return await put_birthday(update, context)
 
     context.user_data["skipped_date"] = True
 
     current_note_str = ""
-    if "note" in context.user_data and context.user_data["note"] is not None:
+    if context.user_data.get("note"):
         current_note_str = f"\nCurrent note: {context.user_data['note']}. Send /delete_note to delete it:\n"
     await update.message.reply_text(
         f"Enter a new note or send /skip to keep the same note. {current_note_str}"
@@ -195,33 +222,43 @@ async def skip_date(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def change_note(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Check new note, call `put_birthday()`."""
     new_note = update.message.text
+    logging.info(f"User {update.effective_user.id} entered new note: {new_note}")
 
     if len(new_note) > 255:
+        logging.warning(
+            f"User {update.effective_user.id} entered a note that is too long: {new_note}"
+        )
         await update.message.reply_text(
             "This note is too long. Please choose a shorter one. Send /skip to keep the same note, /delete_note to delete it:"
         )
         return CHANGE_NOTE
 
     if new_note == context.user_data["note"]:
+        logging.warning(
+            f"User {update.effective_user.id} entered the same note: {new_note}"
+        )
         await update.message.reply_text(
-            "This note is the same. Enter a new note. Send /skip to keep the same note, /delete_note to delete it::"
+            "This note is the same. Input a new note, /delete_note to delete it, or send /skip to keep the same note:"
         )
         return CHANGE_NOTE
 
     context.user_data["new_note"] = new_note
+    return await put_birthday(update, context)
 
+
+async def skip_note(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Not changing note, call `put_birthday()`."""
+    logging.info(f"User {update.effective_user.id} chose to skip changing the note")
+
+    context.user_data["skipped_note"] = True
     return await put_birthday(update, context)
 
 
 async def delete_note(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Delete previous note by setting new to None, call `put_birthday()`."""
+    """Set the note to None, call `put_birthday()`."""
+    logging.info(f"User {update.effective_user.id} chose to delete the note")
+
     context.user_data["new_note"] = None
-    return await put_birthday(update, context)
-
-
-async def skipped_note(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Not changing note, call `put_birthday()`."""
-    context.user_data["skipped_note"] = True
     return await put_birthday(update, context)
 
 
@@ -240,18 +277,24 @@ async def put_birthday(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """
 
     if nothing_changed(context.user_data):
+        logging.warning(f"User {update.effective_user.id} didn't change anything")
         await update.message.reply_text("No changes made. Don't waste my time.")
         return ConversationHandler.END
 
     data_json = _collect_data(context.user_data)
 
-    user_id = update.effective_user.id
     try:
-        response = put_request(user_id, context.user_data["birthday_id"], data_json)
+        response = put_request(
+            update.effective_user.id, context.user_data["birthday_id"], data_json
+        )
+        logging.info(f"Put request response: {response.json()}")
         if response.status_code != 422:
             response.raise_for_status()
     except Exception as e:
-        await update.message.reply_text(f"{e}. Please try again")
+        logging.error(
+            f"Error putting birthday data for user {update.effective_user.id}: {str(e)}"
+        )
+        await update.message.reply_text("Failed. Please try again")
         context.user_data.clear()
         return ConversationHandler.END
 
@@ -267,22 +310,26 @@ async def put_birthday(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return CHANGE_NAME
         elif response.json()["field"] == "date":
             if context.user_data.get("new_day"):
-                context.user_data.pop("new_day")
-                context.user_data.pop("new_month")
-                context.user_data.pop("new_year")
+                context.user_data.pop("new_day", None)
+                context.user_data.pop("new_month", None)
+                context.user_data.pop("new_year", None)
             elif context.user_data.get("day"):
-                context.user_data.pop("day")
-                context.user_data.pop("month")
-                context.user_data.pop("year")
+                context.user_data.pop("day", None)
+                context.user_data.pop("month", None)
+                context.user_data.pop("year", None)
 
             await update.message.reply_text(
                 "Date is invalid. Please enter a valid date (format: `DD.MM.YYYY` or `DD.MM`):"
             )
             return CHANGE_DATE
         else:
+            logging.warning(
+                f"Validation error from API for user {update.effective_user.id}: {response.json()}"
+            )
             await update.message.reply_text("Invalid data. Please try again")
             return ConversationHandler.END
 
+    logging.info(f"User {update.effective_user.id} successfully changed birthday data")
     context.user_data.clear()
     await update.message.reply_text(
         "Birthday changed successfully! /list to see all birthdays"
@@ -341,12 +388,9 @@ change_conv_handler = ConversationHandler(
         ],
         CHANGE_NOTE: [
             MessageHandler(filters.TEXT & ~filters.COMMAND, change_note),
-            CommandHandler("skip", skipped_note),
+            CommandHandler("skip", skip_note),
             CommandHandler("delete_note", delete_note),
         ],
     },
     fallbacks=[CommandHandler("stop", stop)],
-    allow_reentry=True,
 )
-
-# TODO: handle if nothing changed

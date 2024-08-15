@@ -1,6 +1,7 @@
 import requests
 from time import time
 import base64
+import logging
 
 from requests import RequestException
 from cryptography.hazmat.primitives import serialization
@@ -8,7 +9,7 @@ from cryptography.hazmat.primitives.asymmetric import padding
 from cryptography.hazmat.primitives import hashes
 
 from core.config import BOT_TOKEN
-
+import core.logger
 
 PUBLIC_KEY = None
 JWT_EXPIRES_SECONDS = 60 * 60
@@ -34,11 +35,16 @@ class SessionManager:
         Create a new session if it doesn't exist or has expired."""
         if id not in self.sessions or self.sessions[id].is_expired():
             if id == BOT_TOKEN:
+                logging.info("Creating admin session")
                 self.sessions[id] = AdminSession()
             else:
+                logging.info(f"Creating user session with id: {id}")
                 self.sessions[id] = CustomSession(id)
 
         return self.sessions[id]
+
+
+session_manager = SessionManager()
 
 
 class CustomSession(requests.Session):
@@ -83,12 +89,14 @@ class CustomSession(requests.Session):
             )
             login_response.raise_for_status()
         except requests.exceptions.RequestException as e:
-            print(f"Failed to login to api. {e}. {login_response.text}")
+            logging.error(f"Failed to login user {self.id} to the api: {e}.")
             raise RequestException("Failed to login to api")
 
         csrf_access_token = self.cookies["csrf_access_token"]
 
         self.headers.update({"X-CSRF-TOKEN": csrf_access_token})
+
+        logging.info(f"User with id: {self.id} successfully logged in to the api")
         return True
 
     # do i need response?
@@ -100,6 +108,7 @@ class CustomSession(requests.Session):
         """
 
         if self.is_expired():
+            logging.info(f"Session with id: {self.id} has expired. Relogging")
             self.login(self._encrypt_bot_id())
 
     def _get_public_key(self):
@@ -117,15 +126,15 @@ class CustomSession(requests.Session):
             response = requests.get("http://127.0.0.1:8080/public-key")
             response.raise_for_status()
         except requests.exceptions.RequestException as e:
-            print(
-                f"Failed to get public key. {e}"
-            )  # TODO: accessing the response.text in except will raise an error if the request failed
-            raise RequestException(f"Failed to request public key")
+            logging.error(f"Failed to request public key: {e}")
+            raise RequestException("Failed to request public key")
 
         public_key_json = response.json()
         public_key = serialization.load_pem_public_key(
             public_key_json["public_key"].encode("utf-8")
         )
+
+        logging.info("Public key successfully received")
         return public_key
 
     def _encrypt_bot_id(self, request_key=False):
@@ -156,6 +165,8 @@ class CustomSession(requests.Session):
             ),
         )
         encrypted_data_base64 = base64.b64encode(encrypted_data).decode("utf-8")
+
+        logging.info("Bot id successfully encrypted")
         return encrypted_data_base64
 
 
@@ -184,16 +195,14 @@ class AdminSession(CustomSession):
             )
             login_response.raise_for_status()
         except requests.exceptions.RequestException as e:
-            print(f"Failed to login to api. {e}. {login_response.text}")
+            logging.error(f"Failed to login as admin to the api: {e}")
             raise RequestException("Failed to login to api")
 
         csrf_access_token = self.cookies["csrf_access_token"]
         self.headers.update({"X-CSRF-TOKEN": csrf_access_token})
 
+        logging.info("Admin successfully logged in to the api")
         return True
-
-
-session_manager = SessionManager()
 
 
 def post_request(user_id, data_json) -> requests.Response:
@@ -211,6 +220,7 @@ def post_request(user_id, data_json) -> requests.Response:
     """
     user_session = session_manager.get_session(user_id)
 
+    logging.info(f"Posting data: {data_json} from user: {user_id}")
     post_response = user_session.post("http://127.0.0.1:8080/birthdays", json=data_json)
 
     return post_response
@@ -229,6 +239,7 @@ def get_request(user_id) -> requests.Response:
     """
     user_session = session_manager.get_session(user_id)
 
+    logging.info(f"Getting data for user: {user_id}")
     get_response = user_session.get("http://127.0.0.1:8080/birthdays")
 
     return get_response
@@ -248,6 +259,7 @@ def get_by_id_request(user_id, birthday_id) -> requests.Response:
     """
     user_session = session_manager.get_session(user_id)
 
+    logging.info(f"Getting data for user: {user_id} with birthday_id: {birthday_id}")
     get_response = user_session.get(f"http://127.0.0.1:8080/birthdays/{birthday_id}")
 
     return get_response
@@ -268,6 +280,7 @@ def put_request(user_id, birthday_id, data_json) -> requests.Response:
     """
     user_session = session_manager.get_session(user_id)
 
+    logging.info(f"Putting data: {data_json} from user: {user_id}")
     put_response = user_session.put(
         f"http://127.0.0.1:8080/birthdays/{birthday_id}", json=data_json
     )
@@ -289,6 +302,7 @@ def delete_request(user_id, birthday_id) -> requests.Response:
     """
     user_session = session_manager.get_session(user_id)
 
+    logging.info(f"Deleting birthday with id: {birthday_id} from user: {user_id}")
     delete_response = user_session.delete(
         f"http://127.0.0.1:8080/birthdays/{birthday_id}"
     )
@@ -307,6 +321,7 @@ def incoming_birthdays_request() -> requests.Response:
 
     admin_session = session_manager.get_session(BOT_TOKEN)
 
+    logging.info("Getting incoming birthdays")
     response = admin_session.get("http://127.0.0.1:8080/admin/birthdays/incoming")
 
     return response
