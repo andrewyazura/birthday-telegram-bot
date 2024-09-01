@@ -9,7 +9,6 @@ from cryptography.hazmat.primitives.asymmetric import padding
 from cryptography.hazmat.primitives import hashes
 
 from core.config import BOT_TOKEN
-import core.logger
 
 PUBLIC_KEY = None
 JWT_EXPIRES_SECONDS = 60 * 60

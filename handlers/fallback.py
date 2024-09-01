@@ -5,8 +5,6 @@ from telegram.ext import (
 )
 import logging
 
-import core.logger
-
 
 async def stop(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Stop current conversation

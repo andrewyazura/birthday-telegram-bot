@@ -16,8 +16,6 @@ from core.api_requests import put_request, get_request, get_by_id_request
 from core.schema import BirthdaysSchema
 from handlers.fallback import stop
 
-import traceback
-
 
 CHANGE_GET_BIRTHDAY, CHANGE_NAME, CHANGE_DATE, CHANGE_NOTE = range(4)
 

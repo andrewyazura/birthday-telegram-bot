@@ -1,11 +1,9 @@
-import traceback
 import datetime
 import logging
 
 from telegram.ext import ContextTypes
 
 from core.api_requests import incoming_birthdays_request
-import core.logger
 
 
 async def reminder(context: ContextTypes.DEFAULT_TYPE):

@@ -1,7 +1,7 @@
 from datetime import time
 import pytz
 
-from telegram import Update, BotCommand, Bot
+from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler
 from telegram.warnings import PTBUserWarning
 from warnings import filterwarnings

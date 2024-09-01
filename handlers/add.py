@@ -11,7 +11,6 @@ from telegram.ext import (
 )
 from marshmallow import ValidationError
 
-import core.logger
 from core.api_requests import post_request
 from core.schema import BirthdaysSchema
 from handlers.fallback import stop
