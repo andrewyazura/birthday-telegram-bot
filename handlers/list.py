@@ -49,21 +49,24 @@ async def list_birthdays(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         note = f' ({birthday["note"]})' if birthday["note"] is not None else ""
 
-        # Check if the birthday is today
+        # If it's today, special formatting:
         if birthday["day"] == today.day and birthday["month"] == today.month:
             list_of_birthdays += (
                 f"{border} _Today:_ {date} --- *{birthday['name']}*{note}\n{border}"
             )
             inserted_today_panel = True
-        # Add today's panel if it's not inserted yet and the birthday is in the future
-        elif not inserted_today_panel and (
-            birthday["month"] > today.month
-            or (birthday["month"] == today.month and birthday["day"] >= today.day)
-        ):
-            list_of_birthdays += f"{border}• {today_str} --- today\n{border}"
-            inserted_today_panel = True
+        
         # Add the birthday to the list
         else:
+            # Before appending any future or later birthdays, inject today-panel once
+            if not inserted_today_panel and (
+                birthday["month"] > today.month
+                or (birthday["month"] == today.month and birthday["day"] >= today.day)
+            ):
+                list_of_birthdays += f"{border}• {today_str} --- today\n{border}"
+                inserted_today_panel = True
+
+            # Now append this birthday
             list_of_birthdays += f"• {date} --- *{birthday['name']}*{note}\n"
 
     # If today's panel was not inserted, add it at the end
