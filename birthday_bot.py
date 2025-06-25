@@ -28,7 +28,7 @@ def main() -> None:
     Send a daily reminder about the birthdays
     """
 
-    application = ApplicationBuilder().token(BOT_TOKEN).build()
+    application = ApplicationBuilder().token(BOT_TOKEN).post_init(post_init).build()
 
     application.add_handler(add_conv_handler)
     application.add_handler(change_conv_handler)
@@ -42,6 +42,35 @@ def main() -> None:
     )
 
     application.run_polling(allowed_updates=Update.ALL_TYPES)
+
+
+async def post_init(application: ApplicationBuilder) -> None:
+    """Post initialization function for the bot.
+
+    Set bot's name, short/long description and commands.
+    """
+    await application.bot.set_my_name("BirthdayBot")
+    await application.bot.set_my_short_description("To remember everyone's birthday!")
+    await application.bot.set_my_description(
+        "This bot helps you to remember everyone's birthday.\n"
+        "You can add, change, delete and list birthdays.\n"
+        "It also sends you a daily reminder about upcoming birthdays."
+    )
+
+    # /start is excluded from the commands list
+    await application.bot.set_my_commands(
+        [
+            ("list", "list all birthdays"),
+            ("add", "add a birthday"),
+            ("change", "change a birthday"),
+            ("delete", "delete a birthday"),
+            (
+                "skip",
+                "skip the current action (if possible) during /add or /change commands",
+            ),
+            ("stop", "dissrupt current dialogue"),
+        ]
+    )
 
 
 if __name__ == "__main__":

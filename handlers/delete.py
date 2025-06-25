@@ -89,7 +89,7 @@ async def delete_handle_response(update: Update, context: ContextTypes.DEFAULT_T
 
 
 delete_conv_handler = ConversationHandler(
-    entry_points=[CommandHandler("delete_birthday", delete_birthday)],
+    entry_points=[CommandHandler("delete", delete_birthday)],
     states={DELETE_REQUEST: [CallbackQueryHandler(delete_handle_response)]},
     fallbacks=[CommandHandler("stop", stop)],
     allow_reentry=True,

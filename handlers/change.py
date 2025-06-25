@@ -373,7 +373,7 @@ def _collect_data(user_data) -> dict:
 
 
 change_conv_handler = ConversationHandler(
-    entry_points=[CommandHandler("change_birthday", change_birthday)],
+    entry_points=[CommandHandler("change", change_birthday)],
     states={
         CHANGE_GET_BIRTHDAY: [CallbackQueryHandler(change_get_birthday, r"^[1-9]\d*$")],
         CHANGE_NAME: [
