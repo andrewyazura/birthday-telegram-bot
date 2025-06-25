@@ -13,6 +13,7 @@ filterwarnings(
 )
 
 from core.config import BOT_TOKEN
+from handlers.start import start
 from handlers.add import add_conv_handler
 from handlers.change import change_conv_handler
 from handlers.delete import delete_conv_handler
@@ -30,6 +31,7 @@ def main() -> None:
 
     application = ApplicationBuilder().token(BOT_TOKEN).post_init(post_init).build()
 
+    application.add_handler(CommandHandler("start", start))
     application.add_handler(add_conv_handler)
     application.add_handler(change_conv_handler)
     application.add_handler(delete_conv_handler)
