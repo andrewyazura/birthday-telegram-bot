@@ -1,3 +1,5 @@
+import core.logger
+
 from datetime import time
 import pytz
 
@@ -51,6 +53,7 @@ async def post_init(application: ApplicationBuilder) -> None:
 
     Set bot's name, short/long description and commands.
     """
+    # Comment this if you need to restart the bot several times
     await application.bot.set_my_name("BirthdayBot")
     await application.bot.set_my_short_description("To remember everyone's birthday!")
     await application.bot.set_my_description(
