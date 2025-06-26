@@ -170,9 +170,9 @@ async def change_date(update: Update, context: ContextTypes.DEFAULT_TYPE):
         date_json = {"day": day, "month": month, "year": year}
         birthdays_schema.valid_date(date_json)
 
-        context.user_data["day"] = date_json["day"]
-        context.user_data["month"] = date_json["month"]
-        context.user_data["year"] = date_json["year"]
+        context.user_data["new_day"] = date_json["day"]
+        context.user_data["new_month"] = date_json["month"]
+        context.user_data["new_year"] = date_json["year"]
 
         logging.info(
             f"Validated new date for user {update.effective_user.id}: {date_json}"
@@ -274,6 +274,7 @@ async def put_birthday(update: Update, context: ContextTypes.DEFAULT_TYPE):
     If success or unpredicted failure - notify and end conversation.
     """
 
+    print(context.user_data)
     if nothing_changed(context.user_data):
         logging.warning(f"User {update.effective_user.id} didn't change anything")
         await update.message.reply_text("No changes made. Don't waste my time.")
