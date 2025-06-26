@@ -274,7 +274,6 @@ async def put_birthday(update: Update, context: ContextTypes.DEFAULT_TYPE):
     If success or unpredicted failure - notify and end conversation.
     """
 
-    print(context.user_data)
     if nothing_changed(context.user_data):
         logging.warning(f"User {update.effective_user.id} didn't change anything")
         await update.message.reply_text("No changes made. Don't waste my time.")
