@@ -143,24 +143,32 @@ async def post_birthday(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if response.status_code != 422:
             response.raise_for_status()
     except Exception as e:
-        logging.error(f"Error posting birthday data for user {update.effective_user.id}: {str(e)}")
+        logging.error(
+            f"Error posting birthday data for user {update.effective_user.id}: {str(e)}"
+        )
         await update.message.reply_text("Failed. Please try again")
         return ConversationHandler.END
 
     # TODO: print response.json()["message"] to user
     if response.status_code == 422:
         error_field = response.json().get("field")
-        logging.warning(f"Validation error from API for user {update.effective_user.id}: {response.json()}")
+        logging.warning(
+            f"Validation error from API for user {update.effective_user.id}: {response.json()}"
+        )
 
         if error_field == "name":
             context.user_data.pop("name", None)
-            await update.message.reply_text("Name is already in use. Please choose another one:")
+            await update.message.reply_text(
+                "Name is already in use. Please choose another one:"
+            )
             return ADD_NAME
         elif error_field == "date":
             context.user_data.pop("day", None)
             context.user_data.pop("month", None)
             context.user_data.pop("year", None)
-            await update.message.reply_text("Date is invalid. Please enter a valid date (format: `DD.MM.YYYY` or `DD.MM`):")
+            await update.message.reply_text(
+                "Date is invalid. Please enter a valid date (format: `DD.MM.YYYY` or `DD.MM`):"
+            )
             return ADD_DATE
         else:
             await update.message.reply_text("Invalid data. Please try again")
@@ -175,7 +183,7 @@ async def post_birthday(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 add_conv_handler = ConversationHandler(
-    entry_points=[CommandHandler("add_birthday", add_birthday)],
+    entry_points=[CommandHandler("add", add_birthday)],
     states={
         ADD_NAME: [MessageHandler(filters.TEXT & (~filters.COMMAND), add_name)],
         ADD_DATE: [MessageHandler(filters.TEXT & (~filters.COMMAND), add_date)],

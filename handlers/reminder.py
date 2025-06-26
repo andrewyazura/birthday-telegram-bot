@@ -2,6 +2,7 @@ import datetime
 import logging
 
 from telegram.ext import ContextTypes
+from telegram.error import Forbidden
 
 from core.api_requests import incoming_birthdays_request
 
@@ -64,6 +65,11 @@ async def reminder(context: ContextTypes.DEFAULT_TYPE):
             )
             logging.info(
                 f"Sent message to user {birthday['creator']['telegram_id']}. Data: {birthday}"
+            )
+        except Forbidden as e:
+            logging.warning(
+                f"Failed to send message to user {birthday['creator']['telegram_id']}: {e}. "
+                "User might have blocked the bot or left the chat."
             )
         except Exception as e:
             logging.error(

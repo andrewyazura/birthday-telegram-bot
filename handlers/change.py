@@ -170,9 +170,9 @@ async def change_date(update: Update, context: ContextTypes.DEFAULT_TYPE):
         date_json = {"day": day, "month": month, "year": year}
         birthdays_schema.valid_date(date_json)
 
-        context.user_data["day"] = date_json["day"]
-        context.user_data["month"] = date_json["month"]
-        context.user_data["year"] = date_json["year"]
+        context.user_data["new_day"] = date_json["day"]
+        context.user_data["new_month"] = date_json["month"]
+        context.user_data["new_year"] = date_json["year"]
 
         logging.info(
             f"Validated new date for user {update.effective_user.id}: {date_json}"
@@ -373,7 +373,7 @@ def _collect_data(user_data) -> dict:
 
 
 change_conv_handler = ConversationHandler(
-    entry_points=[CommandHandler("change_birthday", change_birthday)],
+    entry_points=[CommandHandler("change", change_birthday)],
     states={
         CHANGE_GET_BIRTHDAY: [CallbackQueryHandler(change_get_birthday, r"^[1-9]\d*$")],
         CHANGE_NAME: [

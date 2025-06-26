@@ -1,6 +1,7 @@
 config.ini
 test_bot.py
 shit/
+logs/
 
 # Byte-compiled / optimized / DLL files
 *__pycache__/
