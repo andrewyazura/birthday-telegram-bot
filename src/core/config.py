@@ -1,9 +1,9 @@
 import configparser
-import os
 import logging
+import os
 
-
-config_file_path = os.path.join(os.path.dirname(__file__), "..", "config.ini")
+fallback_config_path = os.path.join(os.path.dirname(__file__), "..", "config.ini")
+config_file_path = os.getenv("CONFIG_FILE_PATH", fallback_config_path)
 
 config = configparser.ConfigParser()
 

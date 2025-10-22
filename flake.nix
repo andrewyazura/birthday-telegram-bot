@@ -82,14 +82,23 @@
         in {
           options.services.birthday-bot = {
             enable = lib.mkEnableOption "Enable birthday telegram bot";
+            configFile = lib.mkOption {
+              type = lib.types.nullOr
+                (lib.types.either lib.types.path lib.types.str);
+              default = null;
+              description =
+                "Path to the configuration file for the birthday bot";
+              example = "/var/lib/birthday-bot/config.ini";
+            };
           };
 
-          config = lib.mkIf config.services.birthday-bot.enable {
+          config = lib.mkIf cfg.enable {
             users.users.birthday-bot = {
               description = "birthday telegram bot user";
               isSystemUser = true;
               group = "birthday-bot";
             };
+            users.groups.birthday-bot = { };
 
             systemd.services.birthday-telegram-bot = {
               description = "birthday telegram bot service";
@@ -100,6 +109,9 @@
               serviceConfig = {
                 User = "birthday-bot";
                 Group = "birthday-bot";
+
+                Environment = lib.optional (cfg.configFile != null)
+                  "CONFIG_FILE_PATH=${cfg.configFile}";
 
                 ExecStart =
                   "${pkgs.${system}.birthday-bot-env}/bin/python -m main";
