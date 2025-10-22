@@ -77,7 +77,7 @@
         };
       };
 
-      nixosModules.birthday-bot = { config, pkgs, lib, ... }:
+      nixosModules.default = { config, pkgs, lib, ... }:
         let cfg = config.services.birthday-bot;
         in {
           options.services.birthday-bot = {
