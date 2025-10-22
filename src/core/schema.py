@@ -1,5 +1,6 @@
-from marshmallow import Schema, fields, validate, validates_schema, ValidationError
 from datetime import date
+
+from marshmallow import Schema, ValidationError, fields, validate, validates_schema
 
 
 class BirthdaysSchema(Schema):

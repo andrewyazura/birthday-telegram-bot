@@ -8,7 +8,7 @@ from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import padding
 from cryptography.hazmat.primitives import hashes
 
-from core.config import BOT_TOKEN
+from src.core.config import BOT_TOKEN
 
 PUBLIC_KEY = None
 JWT_EXPIRES_SECONDS = 60 * 60

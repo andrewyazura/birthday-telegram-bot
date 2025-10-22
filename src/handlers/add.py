@@ -11,9 +11,9 @@ from telegram.ext import (
 )
 from marshmallow import ValidationError
 
-from core.api_requests import post_request
-from core.schema import BirthdaysSchema
-from handlers.fallback import stop
+from src.core.api_requests import post_request
+from src.core.schema import BirthdaysSchema
+from src.handlers.fallback import stop
 
 
 ADD_NAME, ADD_DATE, ADD_NOTE = range(3)

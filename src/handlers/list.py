@@ -7,7 +7,7 @@ from telegram.ext import (
     ContextTypes,
 )
 
-from core.api_requests import get_request
+from src.core.api_requests import get_request
 
 
 async def list_birthdays(update: Update, context: ContextTypes.DEFAULT_TYPE):
