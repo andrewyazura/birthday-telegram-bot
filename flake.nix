@@ -101,7 +101,7 @@
             };
             users.groups.birthday-bot = { };
 
-            systemd.services.birthday-telegram-bot = {
+            systemd.services.birthday-bot = {
               description = "birthday telegram bot service";
               after = [ "network.target" ];
               wants = [ "network-online.target" ];
@@ -115,7 +115,7 @@
                   "CONFIG_FILE_PATH=${cfg.configFile}";
 
                 ExecStart =
-                  "${self.packages.${system}.default}/bin/birthday-api";
+                  "${self.packages.${system}.default}/bin/birthday-bot";
 
                 Type = "simple";
                 Restart = "on-failure";
