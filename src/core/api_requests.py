@@ -1,14 +1,13 @@
-import requests
-from time import time
 import base64
 import logging
+from time import time
 
-from requests import RequestException
-from cryptography.hazmat.primitives import serialization
+import requests
+from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding
-from cryptography.hazmat.primitives import hashes
+from requests import RequestException
 
-from src.core.config import BOT_TOKEN
+from src.core.config import BOT_TOKEN, config
 
 PUBLIC_KEY = None
 JWT_EXPIRES_SECONDS = 60 * 60
@@ -83,7 +82,7 @@ class CustomSession(requests.Session):
         """
         try:
             login_response = self.get(
-                "http://127.0.0.1:8080/login",
+                f"{config.get('Api', 'base_url')}/login",
                 params={"encrypted_bot_id": encrypted_bot_id, "id": self.id},
             )
             login_response.raise_for_status()
@@ -122,7 +121,7 @@ class CustomSession(requests.Session):
 
         """
         try:
-            response = requests.get("http://127.0.0.1:8080/public-key")
+            response = requests.get(f"{config.get('Api', 'base_url')}/public-key")
             response.raise_for_status()
         except requests.exceptions.RequestException as e:
             logging.error(f"Failed to request public key: {e}")
@@ -189,7 +188,7 @@ class AdminSession(CustomSession):
         """
         try:
             login_response = self.get(
-                "http://127.0.0.1:8080/admin/login",
+                f"{config.get('Api', 'base_url')}/admin/login",
                 params={"encrypted_bot_id": encrypted_bot_id},
             )
             login_response.raise_for_status()
@@ -220,7 +219,9 @@ def post_request(user_id, data_json) -> requests.Response:
     user_session = session_manager.get_session(user_id)
 
     logging.info(f"Posting data: {data_json} from user: {user_id}")
-    post_response = user_session.post("http://127.0.0.1:8080/birthdays", json=data_json)
+    post_response = user_session.post(
+        f"{config.get('Api', 'base_url')}/birthdays", json=data_json
+    )
 
     return post_response
 
@@ -239,7 +240,7 @@ def get_request(user_id) -> requests.Response:
     user_session = session_manager.get_session(user_id)
 
     logging.info(f"Getting data for user: {user_id}")
-    get_response = user_session.get("http://127.0.0.1:8080/birthdays")
+    get_response = user_session.get(f"{config.get('Api', 'base_url')}/birthdays")
 
     return get_response
 
@@ -259,7 +260,9 @@ def get_by_id_request(user_id, birthday_id) -> requests.Response:
     user_session = session_manager.get_session(user_id)
 
     logging.info(f"Getting data for user: {user_id} with birthday_id: {birthday_id}")
-    get_response = user_session.get(f"http://127.0.0.1:8080/birthdays/{birthday_id}")
+    get_response = user_session.get(
+        f"{config.get('Api', 'base_url')}/birthdays/{birthday_id}"
+    )
 
     return get_response
 
@@ -281,7 +284,7 @@ def put_request(user_id, birthday_id, data_json) -> requests.Response:
 
     logging.info(f"Putting data: {data_json} from user: {user_id}")
     put_response = user_session.put(
-        f"http://127.0.0.1:8080/birthdays/{birthday_id}", json=data_json
+        f"{config.get('Api', 'base_url')}/birthdays/{birthday_id}", json=data_json
     )
 
     return put_response
@@ -303,7 +306,7 @@ def delete_request(user_id, birthday_id) -> requests.Response:
 
     logging.info(f"Deleting birthday with id: {birthday_id} from user: {user_id}")
     delete_response = user_session.delete(
-        f"http://127.0.0.1:8080/birthdays/{birthday_id}"
+        f"{config.get('Api', 'base_url')}/birthdays/{birthday_id}"
     )
 
     return delete_response
@@ -321,6 +324,8 @@ def incoming_birthdays_request() -> requests.Response:
     admin_session = session_manager.get_session(BOT_TOKEN)
 
     logging.info("Getting incoming birthdays")
-    response = admin_session.get("http://127.0.0.1:8080/admin/birthdays/incoming")
+    response = admin_session.get(
+        f"{config.get('Api', 'base_url')}/admin/birthdays/incoming"
+    )
 
     return response
