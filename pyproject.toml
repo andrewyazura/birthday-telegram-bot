@@ -13,6 +13,7 @@ dependencies = [
     "psycopg2-binary>=2.9.9,<3",
     "requests>=2.31.0,<3",
     "cryptography>=39.0.1",
+    "marshmallow==3.23.0",
 ]
 
 [dependency-groups]
