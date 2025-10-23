@@ -22,7 +22,8 @@
     };
   };
 
-  outputs = { nixpkgs, pyproject-nix, uv2nix, pyproject-build-systems, ... }:
+  outputs =
+    { self, nixpkgs, pyproject-nix, uv2nix, pyproject-build-systems, ... }:
     let
       system = "x86_64-linux";
       pkgs = import nixpkgs { inherit system; };
@@ -114,7 +115,7 @@
                   "CONFIG_FILE_PATH=${cfg.configFile}";
 
                 ExecStart =
-                  "${pkgs.${system}.birthday-bot-env}/bin/python -m main";
+                  "${self.packages.${system}.default}/bin/birthday-api";
 
                 Type = "simple";
                 Restart = "on-failure";
