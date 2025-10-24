@@ -12,9 +12,9 @@ from telegram.ext import (
 )
 from marshmallow import ValidationError
 
-from core.api_requests import put_request, get_request, get_by_id_request
-from core.schema import BirthdaysSchema
-from handlers.fallback import stop
+from src.core.api_requests import put_request, get_request, get_by_id_request
+from src.core.schema import BirthdaysSchema
+from src.handlers.fallback import stop
 
 
 CHANGE_GET_BIRTHDAY, CHANGE_NAME, CHANGE_DATE, CHANGE_NOTE = range(4)

@@ -1,25 +1,24 @@
-import core.logger
-
 from datetime import time
-import pytz
+from warnings import filterwarnings
 
+import pytz
 from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler
 from telegram.warnings import PTBUserWarning
-from warnings import filterwarnings
 
-from handlers.reminder import reminder
+import src.core.logger
+from src.handlers.reminder import reminder
 
 filterwarnings(
     action="ignore", message=r".*CallbackQueryHandler", category=PTBUserWarning
 )
 
-from core.config import BOT_TOKEN
-from handlers.start import start
-from handlers.add import add_conv_handler
-from handlers.change import change_conv_handler
-from handlers.delete import delete_conv_handler
-from handlers.list import list_birthdays
+from src.core.config import BOT_TOKEN
+from src.handlers.add import add_conv_handler
+from src.handlers.change import change_conv_handler
+from src.handlers.delete import delete_conv_handler
+from src.handlers.list import list_birthdays
+from src.handlers.start import start
 
 
 def main() -> None:

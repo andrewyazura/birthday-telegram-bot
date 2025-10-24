@@ -4,7 +4,7 @@ import logging
 from telegram.ext import ContextTypes
 from telegram.error import Forbidden
 
-from core.api_requests import incoming_birthdays_request
+from src.core.api_requests import incoming_birthdays_request
 
 
 async def reminder(context: ContextTypes.DEFAULT_TYPE):
